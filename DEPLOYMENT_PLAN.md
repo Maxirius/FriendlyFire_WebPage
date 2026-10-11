@@ -1,43 +1,52 @@
 # Deployment Plan: Minecraft Website on Netcup
 
-Last updated: after initial deployment of the welcome page.
+Last updated: after switching the welcome page to embed the live BlueMap.
 
-## Target picture
-- Subdomain (e.g. map.max-kuehn.com, name TBD) → NPM → minecraft-site container
-- Static content, fully hosted on the Netcup RS 1000 G11 (traffic never goes
-  through the home upstream)
-- Map: locally rendered tiles (BlueMap fabric mod on the MC server,
-  AMP/DebianVM/Unraid)
-  → rsync over the existing WireGuard tunnel (OPNsense ↔ Netcup)
-  → /opt/hostings/minecraft_site/
-- Statistics: JSON exports later, same sync path
-- Login/player area: later phase
+## Actual architecture (as built)
 
-## Steps (completed)
-1. ✅ Online snapshot taken (`pre-minecraft-site`)
-2. ✅ New service added to /opt/hostings/docker-compose.yaml:
-   ```yaml
-   minecraft-site:
-       image: nginxinc/nginx-unprivileged:latest
-       container_name: minecraft_site
-       restart: always
-       volumes:
-           - ./minecraft_site/site:/usr/share/nginx/html
-       networks:
-          - docker_network
-       user: "${H_UID}:${H_GID}"
-   ```
-   Backup of the previous compose file: `docker-compose.yaml.bak_pre_mcsite`
-3. 🔲 NPM route (to be created by the user manually) — forward to
-   `minecraft_site:8080`
-4. 🔲 Dedicated rsync/upload user still to discuss
-5. 🔲 Check BlueMap compatibility with MC 26.3 (very fresh version!)
-6. 🔲 Legacy `dynmap` container can eventually be removed (stopped since
-   hardening anyway)
+Two routes live behind NPM on the shared `docker_network`:
 
-## Already deployed
-- Welcome page (purely static, dark voxel theme):
-  `/opt/hostings/minecraft_site/site/index.html`
-  (source of truth: `website/welcome/index.html` in this repo)
-- World-map section with automatic wake-up: probes `./map/maps/`;
-  once BlueMap tile data exists there, the viewer loads automatically
+| Domain | Target | Purpose |
+|---|---|---|
+| `mc.max-kuehn.com` | `minecraft_site:8080` | Welcome page (this repo, `website/welcome/index.html`) |
+| `map.max-kuehn.com` | `bluemap_nginx:8080` | Live BlueMap web app |
+
+BlueMap stack details:
+- `bluemap_nginx` (nginx-unprivileged) serves the static web app from
+  `/opt/hostings/minecraft_site/map_app` (custom conf in
+  `minecraft_site/conf/default.conf`)
+- `bluemap_php` (PHP-FPM 8.3, image `bluemap-php:fpm83`) implements the
+  BlueMap data contract via `sql.php` — tiles live in MariaDB, not flat
+  files. DB credentials in `bluemap_db_secret.env` (gitignored!)
+- `sql.php` source is protected (returns 404 via nginx)
+- Three worlds configured: `world`, `world_the_nether`, `world_the_end`
+
+## Welcome page behaviour
+- Direct iframe embed of `https://map.max-kuehn.com/` in the world-map
+  section, plus a fullscreen link
+- Requires WebGL2 in the visitor's browser (standard BlueMap requirement)
+
+## Completed milestones
+- ✅ Online snapshot taken (`pre-minecraft-site`)
+- ✅ `minecraft-site` service added to /opt/hostings/docker-compose.yaml
+  (backup: `docker-compose.yaml.bak_pre_mcsite`)
+- ✅ NPM routes for `mc.` and `map.max-kuehn.com`
+- ✅ BlueMap rendering pipeline live (nginx + php-fpm + MariaDB storage)
+
+## Remaining items
+1. 🔲 Discord invite link in the nav button
+2. 🔲 Final branding: server name / wordmark (currently placeholder
+   `MC.MAX-KUEHN.COM`)
+3. 🔲 Statistics section (later phase)
+4. 🔲 Login/player area (later phase)
+5. 🔲 Legacy `dynmap` container can be removed (superseded by BlueMap)
+
+## Change workflow
+All changes happen in this repo, get committed/pushed, then deployed:
+
+```
+scp website/welcome/index.html hermes@host.max-kuehn.com:/tmp/mc_index.html
+ssh hermes@host.max-kuehn.com 'sudo mv /tmp/mc_index.html /opt/hostings/minecraft_site/site/index.html && sudo chown hosting:hosting /opt/hostings/minecraft_site/site/index.html && sudo chmod 644 /opt/hostings/minecraft_site/site/index.html'
+```
+
+Snapshot before any structural server change (compose edits, new services).
