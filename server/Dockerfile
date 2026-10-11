@@ -8,7 +8,7 @@ WORKDIR /srv/auth
 
 COPY requirements.txt .
 RUN apt-get update \
- && apt-get install -y --no-install-recommends gcc libffi-dev \
+ && apt-get install -y --no-install-recommends gcc libffi-dev tzdata \
  && pip install --no-cache-dir -r requirements.txt \
  && apt-get purge -y gcc libffi-dev \
  && apt-get autoremove -y \
@@ -24,5 +24,5 @@ USER ffauth
 
 EXPOSE 8000
 CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", \
-     "--port", "8000", "--workers", "2", "--proxy-headers", \
+     "--port", "8000", "--workers", "1", "--proxy-headers", \
      "--forwarded-allow-ips", "*"]

@@ -206,7 +206,17 @@ def purge_expired(tx: dbm.Database) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    dbm.init()
+    # Multiple uvicorn workers race on first-write WAL setup; tolerate it.
+    last_exc: Optional[Exception] = None
+    for attempt in range(5):
+        try:
+            dbm.init()
+            break
+        except Exception as exc:  # sqlite locked during sibling startup
+            last_exc = exc
+            await asyncio.sleep(1.0 + attempt)
+    else:
+        raise last_exc if last_exc else RuntimeError("db init failed")
     conn = dbm.connect()
     try:
         tx = dbm.Database(conn)
