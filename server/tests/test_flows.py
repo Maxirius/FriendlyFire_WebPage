@@ -32,7 +32,8 @@ def fresh_db(monkeypatch):
     dbm.init()
     yield dbm
     conn = dbm.connect()
-    for table in ("audit", "resets", "invites", "sessions", "users", "meta"):
+    for table in ("audit", "whitelist_extras", "resets", "invites",
+                  "sessions", "users", "meta"):
         conn.execute(f"DROP TABLE IF EXISTS {table}")
     conn.commit()
     conn.close()
@@ -476,6 +477,80 @@ async def test_logged_in_password_change_rotates_other_sessions(
                 "email": "changer@example.org",
                 "password": "initial-pass-0000"})
             assert r.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_sync_feed_and_extras(app_module, client_factory, fake_mojang,
+                                    fake_avatar):
+    import db as dbm
+    import security as sec
+    conn = dbm.connect()
+    tx = dbm.Database(conn)
+    tx.run("INSERT INTO users(email,pw_hash,nickname,nickname_uuid,role,"
+           "invites_enabled,created_at) VALUES(?,?,?,?,?,1,?)",
+           "boss2@test.example", sec.hash_password("boss-two-real-pass-1"),
+           "Boss_Two",
+           "aaaabbbbccccdddd0000111122223333", "admin", dbm.now())
+    tx.run("INSERT INTO users(email,pw_hash,nickname,nickname_uuid,role,"
+           "invites_enabled,created_at) VALUES(?,?,?,?,?,0,?)",
+           "member2@test.example", sec.hash_password("member-two-pass-11"),
+           "Member_Two",
+           "eeeeffffgggghhhh1111222233334444", "member", dbm.now())
+    tx.commit()
+    conn.close()
+
+    async with client_factory() as c:
+        # sync endpoint requires bearer
+        r = await c.get("/api/sync/whitelist")
+        assert r.status_code == 403
+
+        good = {"Authorization": "Bearer test-sync-token"}
+        r = await c.get("/api/sync/whitelist", headers=good)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["revision"] == 0
+        assert any(e["uuid"] == "aaaabbbbccccdddd0000111122223333"
+                   for e in body["entries"])
+
+        # login as admin, exercise extras + revisions
+        r = await c.post("/api/login", json={
+            "email": "boss2@test.example", "password": "boss-two-real-pass-1"})
+        assert r.status_code == 200
+
+        r = await c.post("/api/admin/whitelist/extras",
+                         json={"nickname": "Extra_Player",
+                               "note": "discord later"})
+        assert r.status_code == 200, r.text
+        extra_uuid = r.json()["uuid"]
+        assert r.json()["revision"] == 1
+
+        r = await c.get("/api/sync/whitelist", headers=good)
+        names = [e["name"] for e in r.json()["entries"]]
+        assert "Extra_player" in names
+        assert r.json()["revision"] == 1
+
+        # duplicates rejected
+        r = await c.post("/api/admin/whitelist/extras",
+                         json={"nickname": "Extra_Player"})
+        assert r.status_code == 409
+
+        # removal bumps revision again
+        r = await c.delete(f"/api/admin/whitelist/extras/{extra_uuid}")
+        assert r.status_code == 200
+        assert r.json()["revision"] == 2
+
+        r = await c.get("/api/sync/whitelist", headers=good)
+        assert "Extra_player" not in [e["name"]
+                                      for e in r.json()["entries"]]
+
+        # ban flow bumps revision and drops the user from the feed
+        r = await c.post("/api/admin/users/2/disable",
+                         json={"enabled": False})
+        assert r.status_code == 200
+        r = await c.get("/api/sync/whitelist", headers=good)
+        uuids_left = [e["uuid"] for e in r.json()["entries"]]
+        assert "eeeeffffgggghhhh1111222233334444" not in uuids_left
+        assert "aaaabbbbccccdddd0000111122223333" in uuids_left
 
 
 @pytest.mark.anyio

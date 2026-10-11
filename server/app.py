@@ -8,6 +8,7 @@ whitelist export for the game server.
 Runs behind nginx (auth_request gate); never publish the container port.
 """
 import asyncio
+import hmac
 import json
 import logging
 import os
@@ -401,6 +402,7 @@ async def register(req: RegisterReq, request: Request, response: Response,
                " code_hash=?", dbm.now(), uid, digest)
         raw_session = create_session(tx, uid)
         dbm.audit(tx, "register", uid, f"{email}|{nick_canonical}", ip)
+        dbm.bump_whitelist_revision(tx)
         tx.commit()
     except _sq.IntegrityError as exc:
         tx.rollback()
@@ -564,6 +566,7 @@ async def change_nickname(req: NicknameReq, request: Request,
     tx.run("UPDATE users SET nickname=?, nickname_uuid=?, avatar=? WHERE id=?",
            canonical, uuid_hex, avatar_png, user["id"])
     dbm.audit(tx, "nickname_change", user["id"], canonical, client_ip(request))
+    dbm.bump_whitelist_revision(tx)
     return {"ok": True, "nickname": canonical, "uuid": uuid_hex}
 
 
@@ -718,6 +721,28 @@ async def admin_allow_invites(user_id: int, req: ToggleReq,
     return {"ok": True}
 
 
+@app.post("/api/admin/users/{user_id}/disable")
+async def admin_disable_user(user_id: int, req: ToggleReq,
+                             request: Request, user: CurrentUser, tx: DbDep):
+    """enabled=False bans the user: sessions killed + whitelist removal."""
+    require_admin(user)
+    if user_id == user["id"]:
+        raise ApiError("cannot_self_disable", 400)
+    target = tx.one("SELECT id FROM users WHERE id=?", user_id)
+    if not target:
+        raise ApiError("not_found", 404)
+    banned = not req.enabled
+    tx.run("UPDATE users SET disabled=? WHERE id=?",
+           1 if banned else 0, user_id)
+    if banned:
+        tx.run("UPDATE sessions SET revoked=1 WHERE user_id=?", user_id)
+    dbm.audit(tx, "admin_disable_user", user["id"],
+              f"user#{user_id}->{'banned' if banned else 'reactivated'}",
+              client_ip(request))
+    dbm.bump_whitelist_revision(tx)
+    return {"ok": True}
+
+
 @app.get("/api/admin/invites")
 async def admin_invites(user: CurrentUser, tx: DbDep):
     require_admin(user)
@@ -746,16 +771,106 @@ async def admin_stats(user: CurrentUser, tx: DbDep):
     }
 
 
+# --------------------------------------------------------------------------
+# Manual whitelist entries (extras) — also the hook for the future
+# Discord-bot writer.
+# --------------------------------------------------------------------------
+class ExtraReq(BaseModel):
+    nickname: str
+    note: str = ""
+
+
+@app.post("/api/admin/whitelist/extras")
+async def add_extra(req: ExtraReq, request: Request, user: CurrentUser,
+                    tx: DbDep):
+    require_admin(user)
+    nickname = req.nickname.strip()
+    try:
+        profile = await mojang.lookup_profile(http_client(), nickname)
+    except RuntimeError:
+        raise ApiError("mojang_unavailable", 503)
+    if profile is None:
+        raise ApiError("unknown_nick", 400)
+    canonical, uuid_hex = profile
+    clash_user = tx.one("SELECT 1 FROM users WHERE nickname_uuid=?",
+                        uuid_hex)
+    clash_extra = tx.one("SELECT 1 FROM whitelist_extras WHERE uuid=?",
+                         uuid_hex)
+    if clash_user or clash_extra:
+        raise ApiError("nick_taken", 409)
+    tx.run(
+        "INSERT INTO whitelist_extras(uuid,name,added_by,source,note,"
+        " created_at) VALUES(?,?,?,'manual',?,?)",
+        uuid_hex, canonical, user["id"], req.note[:200], dbm.now(),
+    )
+    rev = dbm.bump_whitelist_revision(tx)
+    dbm.audit(tx, "whitelist_extra_added", user["id"], canonical,
+              client_ip(request))
+    return {"ok": True, "uuid": uuid_hex, "name": canonical, "revision": rev}
+
+
+@app.delete("/api/admin/whitelist/extras/{uuid_hex}")
+async def remove_extra(uuid_hex: str, request: Request, user: CurrentUser,
+                       tx: DbDep):
+    require_admin(user)
+    if not re.fullmatch(r"[0-9a-f]{32}", uuid_hex):
+        raise ApiError("invalid_uuid", 400)
+    deleted = tx.run("DELETE FROM whitelist_extras WHERE uuid=?",
+                     uuid_hex).rowcount
+    if not deleted:
+        raise ApiError("not_found", 404)
+    rev = dbm.bump_whitelist_revision(tx)
+    dbm.audit(tx, "whitelist_extra_removed", user["id"], uuid_hex,
+              client_ip(request))
+    return {"ok": True, "revision": rev}
+
+
 @app.get("/whitelist.txt")
 async def whitelist_txt(request: Request, user: CurrentUser, tx: DbDep):
     require_admin(user)
     rows = tx.all_rows(
         "SELECT nickname_uuid FROM users WHERE disabled=0 AND nickname_uuid"
         " IS NOT NULL")
-    body = "\n".join(sorted({r["nickname_uuid"] for r in rows})) + "\n"
+    extras = tx.all_rows("SELECT uuid FROM whitelist_extras")
+    uuids = sorted({r["nickname_uuid"] for r in rows} |
+                   {e["uuid"] for e in extras})
     dbm.audit(tx, "whitelist_export", user["id"], "",
               client_ip(request))
-    return Response(content=body, media_type="text/plain")
+    return Response(content="\n".join(uuids) + "\n", media_type="text/plain")
+
+
+SYNC_TOKEN = os.environ.get("FF_SYNC_TOKEN", "")
+
+
+def require_sync_agent(request: Request) -> None:
+    """Constant-time bearer check for the Velocity pull agent."""
+    token = os.environ.get("FF_SYNC_TOKEN", "")
+    if not token:
+        raise ApiError("sync_disabled", 503)
+    supplied = request.headers.get("authorization", "")
+    expected = f"Bearer {token}"
+    if not hmac.compare_digest(supplied, expected):
+        raise ApiError("forbidden", 403)
+
+
+@app.get("/api/sync/whitelist")
+async def sync_whitelist(request: Request, tx: DbDep):
+    """Authoritative whitelist feed for the Velocity bridge plugin."""
+    require_sync_agent(request)
+    rows = tx.all_rows(
+        "SELECT nickname, nickname_uuid FROM users"
+        " WHERE disabled=0 AND nickname_uuid IS NOT NULL")
+    extras = tx.all_rows(
+        "SELECT uuid, name FROM whitelist_extras")
+    merged: dict[str, str] = {}
+    for r in rows:
+        merged[r["nickname_uuid"]] = r["nickname"]
+    for e in extras:
+        merged[e["uuid"]] = e["name"]
+    entries = [{"uuid": u, "name": n} for u, n in sorted(merged.items())]
+    return JSONResponse(
+        {"revision": dbm.whitelist_revision(tx), "entries": entries},
+        headers={"Cache-Control": "no-store"})
 
 
 # --------------------------------------------------------------------------

@@ -61,6 +61,15 @@ CREATE TABLE IF NOT EXISTS resets (
   used_at    REAL
 );
 
+CREATE TABLE IF NOT EXISTS whitelist_extras (
+  uuid      TEXT PRIMARY KEY,          -- hex, no dashes
+  name      TEXT NOT NULL,
+  added_by  INTEGER REFERENCES users(id),
+  source    TEXT NOT NULL DEFAULT 'manual',
+  note      TEXT,
+  created_at REAL NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS audit (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   ts         REAL NOT NULL,
@@ -152,3 +161,19 @@ def audit(db: Database, event: str, actor: Optional[int],
         "INSERT INTO audit(ts,actor_user,event,detail,ip) VALUES(?,?,?,?,?)",
         now(), actor, event, detail[:400], ip[:64],
     )
+
+
+REV_KEY = "whitelist_rev"
+
+
+def bump_whitelist_revision(db: Database) -> int:
+    """Monotonic revision for the whitelist sync consumers."""
+    row = db.one(f"SELECT value FROM meta WHERE key='{REV_KEY}'")
+    rev = (int(row["value"]) if row else 0) + 1
+    meta_set(db, REV_KEY, str(rev))
+    return rev
+
+
+def whitelist_revision(db: Database) -> int:
+    row = db.one(f"SELECT value FROM meta WHERE key='{REV_KEY}'")
+    return int(row["value"]) if row else 0
