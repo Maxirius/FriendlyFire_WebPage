@@ -22,9 +22,11 @@ BlueMap stack details:
 - Three worlds configured: `world`, `world_the_nether`, `world_the_end`
 
 ## Welcome page behaviour
-- Direct iframe embed of `https://map.max-kuehn.com/` in the world-map
-  section, plus a fullscreen link
-- Requires WebGL2 in the visitor's browser (standard BlueMap requirement)
+- Entire site (incl. this page) sits behind the login wall served by
+  `minecraft_site` nginx `auth_request` -> `minecraft_auth` `/gate`;
+  anonymous visitors only ever see /login, /register, /forgot, /reset
+  and /assets/*
+- Map at map.max-kuehn.com REMAINS PUBLIC (explicit user decision)
 
 ## Completed milestones
 - ✅ Online snapshot taken (`pre-minecraft-site`)
@@ -34,11 +36,13 @@ BlueMap stack details:
 - ✅ BlueMap rendering pipeline live (nginx + php-fpm + MariaDB storage)
 
 ## Remaining items
-1. 🔲 Discord invite link in the nav button
-2. 🔲 Final branding: server name / wordmark (currently placeholder
-   `MC.MAX-KUEHN.COM`)
-3. 🔲 Statistics section (later phase)
-4. 🔲 Login/player area (later phase)
+1. 🔲 ~~Login/player area~~ → IMPLEMENTED (see "Authentication architecture");
+   awaiting deployment: build `friendlyfire-auth` image, insert compose
+   services, create Mailcow mailbox for notifications@max-kuehn.com, fill
+   `auth.env`, then flip the nginx config on minecraft_site
+2. 🔲 Discord invite link in the nav button
+3. 🔲 Final branding: server name / wordmark
+4. 🔲 Statistics section (later phase)
 5. 🔲 Legacy `dynmap` container can be removed (superseded by BlueMap)
 
 ## Change workflow
@@ -50,3 +54,20 @@ ssh hermes@host.max-kuehn.com 'sudo mv /tmp/mc_index.html /opt/hostings/minecraf
 ```
 
 Snapshot before any structural server change (compose edits, new services).
+
+## Auth-service deployment steps (when approved)
+1. Snapshot gate (`pre-minecraft-auth` online snapshot).
+2. Sync `server/` to `/opt/hostings/minecraft_auth/build/` (owner hosting).
+3. Create Mailcow mailbox `notifications@max-kuehn.com`; put its password
+   into `/opt/hostings/minecraft_auth/auth.env` (chmod 600, root-owned) —
+   start from `server/auth.env.template`; set a strong FF_ADMIN_PASSWORD.
+4. Regenerate docker-compose.yaml via python3+PyYAML inserting BOTH
+   services from `server/compose-snippet.reference.yaml`
+   (minecraft-auth build + minecraft-site conf bind-mount), keeping
+   everything else byte-identical. Backup first: `.bak_pre_ffauth`.
+5. `sudo docker compose config >/dev/null` then
+   `sudo docker compose up -d minecraft-auth minecraft-site`.
+6. Verify: `docker exec nginx_proxy_manager-app-1 curl -s -o /dev/null
+   -w '%{http_code}' http://minecraft_auth:8000/health` -> 200; then
+   anonymous browse of mc.max-kuehn.com must land on /login.
+7. User creates/logs in with the bootstrap admin, rotates the password.

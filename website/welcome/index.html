@@ -244,7 +244,7 @@ footer .tagline em{color:var(--accent);font-style:normal;}
     <nav class="links">
       <a href="#weltkarte">Weltkarte</a>
       <a href="#statistiken">Statistiken<span class="soon-tag">BALD</span></a>
-      <a href="#login" aria-disabled="true" onclick="return false;">Login</a>
+      <a href="/login">Login</a>
       <a class="btn-discord hide-mobile" href="#">Discord</a><!-- invite link follows -->
     </nav>
   </div>
@@ -263,8 +263,8 @@ footer .tagline em{color:var(--accent);font-style:normal;}
         Bereich für angemeldete Spieler.
       </p>
       <div class="cta-row">
+        <a class="cta primary" href="/login">Spielerbereich</a>
         <a class="cta ghost" href="#roadmap">Was geplant ist ↓</a>
-        <a class="cta disabled" href="#" aria-disabled="true" tabindex="-1">Zur Weltkarte</a>
       </div>
     </div>
 
@@ -324,20 +324,23 @@ footer .tagline em{color:var(--accent);font-style:normal;}
         <p>Diese Seite — erster Anlaufpunkt und Info-Hub für die Community.</p>
         <span class="now">JETZT AKTIV</span>
       </article>
-      <article class="phase" id="karte">
+      <article class="phase active" id="karte">
         <span class="phase-num">PHASE 02</span>
         <h3>Weltkarte</h3>
         <p>Unsere Welt wird fortlaufend kartografiert und live von unserer Infrastruktur gestreamt — volle Geschwindigkeit für jeden Besucher.</p>
+        <span class="now">LIVE</span>
       </article>
       <article class="phase" id="statistiken">
         <span class="phase-num">PHASE 03</span>
         <h3>Statistiken</h3>
         <p>Spielzeiten, Fortschritte und Server-Kennzahlen, übersichtlich aufbereitet.</p>
       </article>
-      <article class="phase" id="login">
+      <article class="phase active" id="login">
         <span class="phase-num">PHASE 04</span>
         <h3>Login &amp; Profile</h3>
-        <p>Anmeldbare Spieleraccounts mit Zugriff auf persönliche Kartenmarker und Statistikhistorie.</p>
+        <p>Accounts nur per persönlicher Einladung, Minecraft-Nickname für die
+          Whitelist-Automatisierung, Profilbild automatisch aus dem Skin.</p>
+        <span class="now">IM BAU</span>
       </article>
     </div>
   </section>
@@ -365,8 +368,11 @@ footer .tagline em{color:var(--accent);font-style:normal;}
       <circle cx="12" cy="15.5" r="1.6" fill="currentColor"/>
     </svg>
     <div>
-      <p>Spielerbereich in Vorbereitung</p>
-      <p>Logins, persönliche Markierungen auf der Karte und individuelle Statistiken kommen in einer späteren Phase. Diese Seite bleibt bis dahin offen für alle.</p>
+      <p>Zugang nur per Einladung</p>
+      <p>Die gesamte Seite ist inzwischen für Mitglieder reserviert: Account,
+        Whitelist-Anbindung und persönliche Statistiken. Bestehende Spieler
+        melden sich oben rechts an — neue Freunde bekommen eine persönliche
+        Einladung per Mail.</p>
     </div>
   </aside>
 

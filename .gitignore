@@ -11,3 +11,10 @@ mods-*/
 websim/
 __pycache__/
 .DS_Store
+
+# Auth service locals
+server/smoke.db*
+server/dev_auth.db*
+server/auth.env
+server/data/
+.pytest_cache/

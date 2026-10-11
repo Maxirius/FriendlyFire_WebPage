@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registrieren · FriendlyFire Minecraft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap nav">
+    <a class="wordmark" href="/">MC.<em>FRIENDLYFIRE</em></a>
+    <nav class="userarea"></nav>
+  </div>
+</header>
+
+<main class="center-shell">
+  <form class="card kiosk" id="regForm" method="post" autocomplete="off">
+    <div class="brand-mark">FRIENDLY<b>FIRE</b> · NEUER ACCOUNT</div>
+    <h1>Account anlegen</h1>
+    <p class="sub" id="intro">Die Registrierung funktioniert ausschließlich
+      über persönliche Einladungen.</p>
+
+    <div class="field">
+      <label for="email">E-Mail</label>
+      <input type="email" id="email" required>
+    </div>
+    <div class="field">
+      <label for="password">Passwort <span style="opacity:.7">(mind. 10 Zeichen)</span></label>
+      <input type="password" id="password" minlength="10" required>
+    </div>
+    <div class="field">
+      <label for="nickname">Minecraft-Nickname <span style="opacity:.7">(Java Edition)</span></label>
+      <input type="text" id="nickname" maxlength="16" required
+             pattern="[A-Za-z0-9_]{3,16}">
+      <p class="note">Wir prüfen den Namen live bei Mojang und ziehen daraus
+        automatisch dein Profilbild (Skin-Kopf).</p>
+    </div>
+
+    <button class="btn" type="submit" id="submitBtn">Account erstellen</button>
+    <p class="form-msg" id="msg" role="alert"></p>
+
+    <div class="alt-row">
+      <a href="/login">← Zur Anmeldung</a>
+    </div>
+  </form>
+</main>
+
+<script>
+const ERRORS={
+  invalid_invite:'Dieser Einladungslink ist ungültig oder bereits benutzt.',
+  weak_password:'Das Passwort ist zu kurz (mind. 10 Zeichen).',
+  invalid_email:'Diese E-Mail-Adresse sieht nicht gültig aus.',
+  email_taken:'Für diese E-Mail existe bereits ein Account.',
+  invalid_nick_format:'Nicknamen: 3–16 Zeichen, nur Buchstaben/Zahlen/_',
+  unknown_nick:'Diesen Minecraft-Namen gibt es nicht (oder keine Premium-Account).',
+  nick_taken:'Dieser Nickname ist in unserer Community schon registriert.',
+  rate_limited:'Zu viele Versuche — bitte etwas später nochmal probieren.',
+  mojang_unavailable:'Mojang-Service gerade nicht erreichbar — später erneut versuchen.',
+};
+
+// pull invite token from /invite/<token> redirect (?invite=...)
+const params=new URLSearchParams(location.search);
+let invite=params.get('invite')||'';
+if(!invite&&!window.__hadInvite){
+  // arrived at /register directly without token
+  document.getElementById('intro').innerHTML=
+    'Ohne gültigen <b>Einladungslink</b> geht es hier nicht weiter — '+
+    'frag jemanden vom Team.';
+}else{
+  const el=document.createElement('p');
+  el.className='note mono-sm';
+  el.textContent='Einladung erkannt: '+invite.slice(0,10)+'…';
+  document.getElementById('intro').appendChild(el);
+}
+
+document.getElementById('regForm').addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  const btn=document.getElementById('submitBtn');
+  const msg=document.getElementById('msg');
+  btn.disabled=true;msg.className='form-msg';msg.textContent='';
+  try{
+    const r=await fetch('/api/register',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        email:document.getElementById('email').value.trim(),
+        password:document.getElementById('password').value,
+        nickname:document.getElementById('nickname').value.trim(),
+        invite:invite}),
+    });
+    if(r.ok){location.href='/';return;}
+    const err=(await r.json().catch(()=>null))?.detail?.code;
+    msg.textContent=ERRORS[err]||'Registrierung fehlgeschlagen.';
+    msg.classList.add('err');
+  }catch(_){
+    msg.textContent='Netzwerkfehler — bitte erneut versuchen.';
+    msg.classList.add('err');
+  }finally{btn.disabled=false;}
+});
+</script>
+
+</body>
+</html>
