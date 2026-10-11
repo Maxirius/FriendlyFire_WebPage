@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minecraft-Community · max-kuehn.com</title>
+<meta name="description" content="Willkommensseite unseres Minecraft-Servers. Weltkarte, Statistiken und Spielerkonten folgen.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TOKENS — dunkler Blocklook: quadratisch, kantig, 1 Accent
+   ============================================================ */
+:root{
+  --bg:        #101418;
+  --panel:     #171d23;
+  --panel-2:   #131920;
+  --ink:       #e9eee2;
+  --muted:     #94a396;
+  --border:    #26303a;
+  --accent:    #77cf52;   /* Grasblock-Grün */
+  --accent-ink:#10230c;
+  --amber:     #ffc35c;   /* Fackel-Amber, sparsam */
+  --font-body: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-pixel:"Press Start 2P", monospace;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+::selection{background:var(--accent);color:var(--accent-ink);}
+
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  line-height:1.6;
+  /* feines Blockraster im Hintergrund */
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size:48px 48px;
+  background-position:center top;
+  opacity:.999; /* Raster wirkt sonst zu dominant → wird unten gedämpft */
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,
+    rgba(16,20,24,.92) 0%, rgba(16,20,24,.86) 40%, rgba(16,20,24,.97) 100%);
+}
+
+.wrap{max-width:1060px;margin:0 auto;padding:0 24px;}
+
+/* ---------- Header ---------- */
+header{
+  border-bottom:1px solid var(--border);
+  background:rgba(16,20,24,.82);
+  backdrop-filter:blur(6px);
+  position:sticky;top:0;z-index:10;
+}
+.nav{
+  display:flex;align-items:center;gap:28px;height:64px;
+}
+.wordmark{
+  font-family:var(--font-pixel);
+  font-size:13px;color:var(--ink);
+  letter-spacing:.5px;text-decoration:none;line-height:1.4;
+}
+.wordmark em{color:var(--accent);font-style:normal;}
+nav.links{
+  margin-left:auto;display:flex;gap:8px;align-items:center;
+}
+nav.links a{
+  color:var(--muted);text-decoration:none;font-size:14px;
+  padding:8px 12px;border:1px solid transparent;
+  transition:color .15s,border-color .15s;
+}
+nav.links a:hover:not(.soon){color:var(--ink);}
+.soon-tag{
+  font-family:var(--font-mono);font-size:10px;
+  color:var(--muted);border:1px dashed var(--border);
+  padding:1px 5px;margin-left:6px;vertical-align:middle;
+}
+.btn-discord{
+  color:var(--accent-ink)!important;background:var(--accent);
+  border:1px solid var(--accent)!important;font-weight:700;
+}
+.btn-discord:hover{background:#8ce363!important;}
+
+@media(max-width:720px){
+  nav.links a.hide-mobile{display:none;}
+}
+
+/* ---------- Hero ---------- */
+.hero{
+  display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);
+  gap:56px;align-items:end;
+  padding:96px 0 72px;
+}
+.kicker{
+  display:inline-flex;align-items:center;gap:10px;
+  font-family:var(--font-mono);font-size:12px;color:var(--muted);
+  border:1px solid var(--border);padding:6px 12px;margin-bottom:28px;
+  background:var(--panel-2);
+}
+.kicker i{
+  width:8px;height:8px;background:var(--accent);display:inline-block;
+  animation:pulse 2.4s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+h1{
+  font-size:clamp(38px,6vw,62px);
+  font-weight:700;line-height:1.04;letter-spacing:-.02em;
+  text-wrap:balance;
+}
+h1 .hl{color:var(--accent);}
+.lede{
+  margin-top:22px;font-size:18px;color:var(--muted);max-width:46ch;
+  text-wrap:pretty;
+}
+.cta-row{margin-top:36px;display:flex;gap:14px;flex-wrap:wrap;}
+.cta{
+  display:inline-block;text-decoration:none;font-weight:700;font-size:15px;
+  padding:13px 22px;border:1px solid var(--border);
+  color:var(--ink);transition:transform .12s ease,background .15s,color .15s;
+}
+.cta.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.cta.primary:hover{background:#8ce363;}
+.cta.ghost:hover{background:var(--panel);border-color:var(--muted);}
+.cta.disabled{color:var(--muted);cursor:not-allowed;border-style:dashed;}
+
+/* Voxel-Hügellandschaft rechts */
+.voxelfield{justify-self:end;width:100%;max-width:420px;}
+.voxelfield svg{display:block;width:100%;height:auto;}
+.caption{
+  margin-top:10px;font-family:var(--font-mono);font-size:11px;
+  color:var(--muted);text-align:right;
+}
+
+@media(max-width:860px){
+  .hero{grid-template-columns:1fr;padding:64px 0 48px;gap:40px;}
+  .voxelfield{justify-self:start;max-width:340px;}
+  .caption{text-align:left;}
+}
+
+/* ---------- Roadmap ---------- */
+section.phase-strip{
+  border-top:1px solid var(--border);
+  padding:64px 0 80px;
+}
+.section-head{display:flex;align-items:baseline;gap:16px;margin-bottom:40px;}
+.section-head h2{font-size:26px;font-weight:700;letter-spacing:-.01em;}
+.section-head span{font-family:var(--font-mono);font-size:12px;color:var(--muted);}
+
+.phases{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  counter-reset:phase;
+}
+@media(max-width:860px){.phases{grid-template-columns:1fr;}}
+
+.phase{
+  border-left:1px solid var(--border);
+  padding:4px 22px 8px;
+  position:relative;
+}
+.phase:first-child{border-left:none;padding-left:0;}
+@media(max-width:860px){
+  .phase{border-left:none;border-top:1px solid var(--border);padding:20px 0 8px;}
+  .phase:first-child{border-top:none;}
+}
+.phase-num{
+  font-family:var(--font-pixel);font-size:10px;color:var(--muted);
+  display:block;margin-bottom:14px;
+}
+.phase.active .phase-num{color:var(--accent);}
+.phase h3{font-size:16px;font-weight:700;margin-bottom:8px;}
+.phase p{font-size:13.5px;color:var(--muted);text-wrap:pretty;}
+.phase .now{
+  display:inline-block;font-family:var(--font-mono);font-size:10px;
+  background:var(--accent);color:var(--accent-ink);
+  padding:2px 7px;margin-top:12px;font-weight:600;
+}
+
+/* ---------- Weltkarte ---------- */
+.map-section{
+  border-top:1px solid var(--border);
+  padding:64px 0 80px;
+}
+.map-frame{
+  position:relative;
+  aspect-ratio:16/9;
+  border:1px solid var(--border);
+  background:var(--panel-2);
+  overflow:hidden;
+}
+.map-frame iframe{
+  position:absolute;inset:0;width:100%;height:100%;
+  border:0;background:#0b0e12;
+}
+.map-overlay{
+  position:absolute;inset:0;z-index:2;
+  display:flex;flex-direction:column;gap:14px;
+  align-items:center;justify-content:center;
+  text-align:center;padding:24px;
+  background:
+    repeating-linear-gradient(90deg,var(--border) 0 1px,transparent 1px 48px),
+    repeating-linear-gradient(0deg,var(--border) 0 1px,transparent 1px 48px),
+    var(--panel-2);
+}
+.map-overlay.hidden{display:none;}
+.map-overlay .compass{
+  width:34px;height:34px;border:2px solid var(--accent);
+  rotate:45deg;position:relative;
+}
+.map-overlay .compass::after{
+  content:"";position:absolute;inset:6px;
+  border:1px solid var(--muted);
+}
+.map-overlay p{font-size:14px;color:var(--muted);max-width:44ch;text-wrap:pretty;}
+.map-overlay strong{color:var(--ink);}
+
+/* ---------- Hinweis Login ---------- */
+.login-note{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:28px 32px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;
+  margin-bottom:80px;
+}
+.lock{
+  flex:none;color:var(--amber);
+}
+.login-note div>p:first-child{font-weight:700;margin-bottom:4px;}
+.login-note p{font-size:14px;color:var(--muted);}
+
+/* ---------- Footer ---------- */
+footer{
+  border-top:1px solid var(--border);
+  padding:36px 0 48px;
+  display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  font-family:var(--font-mono);font-size:12px;color:var(--muted);
+}
+footer .tagline em{color:var(--accent);font-style:normal;}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s!important;transition-duration:.001s!important;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <!-- PLATZHALTER: Wortmarke = technische Adresse, sobald Name/Domain stehen -->
+  <div class="wrap nav">
+    <a class="wordmark" href="/">MC.<em>MAX-KUEHN</em>.COM</a>
+    <nav class="links">
+      <a href="#karte">Weltkarte<span class="soon-tag">BALD</span></a>
+      <a href="#statistiken">Statistiken<span class="soon-tag">BALD</span></a>
+      <a href="#login" aria-disabled="true" onclick="return false;">Login</a>
+      <a class="btn-discord hide-mobile" href="#">Discord</a><!-- Invite-Link folgt -->
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div>
+      <span class="kicker"><i></i> SERVER PROJEKT LÄUFT · FABRIC 26.3</span>
+      <h1>Eine Welt,<br>die hier ihr <span class="hl">Zuhause</span> bekommt.</h1>
+      <p class="lede">
+        Unser Minecraft-Server wächst — und diese Seite wird sein Schaufenster:
+        Weltkarte zum Erkunden, Statistiken zum Stöbern und später ein eigener
+        Bereich für angemeldete Spieler.
+      </p>
+      <div class="cta-row">
+        <a class="cta ghost" href="#roadmap">Was geplant ist ↓</a>
+        <a class="cta disabled" href="#" aria-disabled="true" tabindex="-1">Zur Weltkarte</a>
+      </div>
+    </div>
+
+    <!-- Dekorative Voxellandschaft (SVG, deterministisch) -->
+    <figure class="voxelfield" aria-hidden="true">
+      <svg viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg">
+        <!-- Wolken -->
+        <rect x="40"  y="26" width="42" height="10" fill="#2a333d"/>
+        <rect x="196" y="16" width="30" height="10" fill="#2a333d"/>
+        <rect x="230" y="26" width="18" height="10" fill="#222a33"/>
+        <!-- schwebende Insel -->
+        <rect x="228" y="58" width="36" height="8" fill="#77cf52"/>
+        <rect x="236" y="66" width="20" height="8" fill="#6a5a3e"/>
+        <rect x="240" y="74" width="12" height="6" fill="#59492f"/>
+        <!-- Terrain: gestufte Säulen, Gras oben, Erde darunter -->
+        <g>
+          <!-- col heights (deterministisches Profil) -->
+          <rect x="0"   y="130" width="20" height="90" fill="#5aa63f"/><rect x="0"   y="140" width="20" height="80" fill="#6a5a3e"/>
+          <rect x="20"  y="122" width="20" height="98" fill="#5aa63f"/><rect x="20"  y="132" width="20" height="88" fill="#6a5a3e"/>
+          <rect x="40"  y="126" width="20" height="94" fill="#67bf47"/><rect x="40"  y="136" width="20" height="84" fill="#6a5a3e"/>
+          <rect x="60"  y="112" width="20" height="108" fill="#5aa63f"/><rect x="60"  y="122" width="20" height="98" fill="#6a5a3e"/>
+          <rect x="80"  y="104" width="20" height="116" fill="#67bf47"/><rect x="80"  y="114" width="20" height="106" fill="#6a5a3e"/>
+          <rect x="100" y="110" width="20" height="110" fill="#5aa63f"/><rect x="100" y="120" width="20" height="100" fill="#6a5a3e"/>
+          <rect x="120" y="96"  width="20" height="124" fill="#67bf47"/><rect x="120" y="106" width="20" height="114" fill="#6a5a3e"/>
+          <rect x="140" y="88"  width="20" height="132" fill="#5aa63f"/><rect x="140" y="98"  width="20" height="122" fill="#6a5a3e"/>
+          <rect x="160" y="94"  width="20" height="126" fill="#67bf47"/><rect x="160" y="104" width="20" height="116" fill="#6a5a3e"/>
+          <rect x="180" y="78"  width="20" height="142" fill="#5aa63f"/><rect x="180" y="88"  width="20" height="132" fill="#6a5a3e"/>
+          <rect x="200" y="84"  width="20" height="136" fill="#67bf47"/><rect x="200" y="94"  width="20" height="126" fill="#6a5a3e"/>
+          <rect x="220" y="70"  width="20" height="150" fill="#5aa63f"/><rect x="220" y="80"  width="20" height="140" fill="#6a5a3e"/>
+          <rect x="240" y="76"  width="20" height="144" fill="#67bf47"/><rect x="240" y="86"  width="20" height="134" fill="#6a5a3e"/>
+          <rect x="260" y="62"  width="20" height="158" fill="#5aa63f"/><rect x="260" y="72"  width="20" height="148" fill="#6a5a3e"/>
+          <rect x="280" y="68"  width="20" height="152" fill="#67bf47"/><rect x="280" y="78"  width="20" height="142" fill="#6a5a3e"/>
+          <rect x="300" y="56"  width="20" height="164" fill="#5aa63f"/><rect x="300" y="66"  width="20" height="154" fill="#6a5a3e"/>
+        </g>
+        <!-- Baumkrone auf mittlerer Kuppe -->
+        <rect x="182" y="64" width="16" height="14" fill="#3f8f2f"/>
+        <rect x="186" y="56" width="8"  height="8"  fill="#3f8f2f"/>
+        <!-- Fackelpunkt -->
+        <rect x="264" y="50" width="4" height="6" fill="#ffc35c"/>
+      </svg>
+      <figcaption class="caption">// gerendert zuhause · geliefert aus der cloud</figcaption>
+    </figure>
+  </div>
+
+  <!-- ROADMAP -->
+  <section class="phase-strip" id="roadmap">
+    <div class="section-head">
+      <h2>Roadmap</h2>
+      <span>wird mit dem Server mitwachsen</span>
+    </div>
+    <div class="phases">
+      <article class="phase active">
+        <span class="phase-num">PHASE 01</span>
+        <h3>Willkommensseite</h3>
+        <p>Diese Seite — erster Anlaufpunkt und Info-Hub für die Community.</p>
+        <span class="now">JETZT AKTIV</span>
+      </article>
+      <article class="phase" id="karte">
+        <span class="phase-num">PHASE 02</span>
+        <h3>Weltkarte</h3>
+        <p>Lokal gerenderte Kartentiles, gespiegelt auf schnellem Webspace — volle Geschwindigkeit für jeden Besucher.</p>
+      </article>
+      <article class="phase" id="statistiken">
+        <span class="phase-num">PHASE 03</span>
+        <h3>Statistiken</h3>
+        <p>Spielzeiten, Fortschritte und Server-Kennzahlen, übersichtlich aufbereitet.</p>
+      </article>
+      <article class="phase" id="login">
+        <span class="phase-num">PHASE 04</span>
+        <h3>Login &amp; Profile</h3>
+        <p>Anmeldbare Spieleraccounts mit Zugriff auf persönliche Kartenmarker und Statistikhistorie.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- WELTKARTE -->
+  <section class="map-section" id="weltkarte">
+    <div class="section-head">
+      <h2>Weltkarte</h2>
+      <span>live erkunden, sobald die ersten Chunks gerendert sind</span>
+    </div>
+    <div class="map-frame" id="mapFrame">
+      <iframe id="mapEmbed" title="Interaktive Weltkarte (BlueMap)" loading="lazy"
+              src="about:blank" allowfullscreen></iframe>
+      <div class="map-overlay" id="mapOverlay">
+        <span class="compass" aria-hidden="true"></span>
+        <p><strong>Noch kein Render verfügbar.</strong><br>
+        Sobald die Welt erstmals kartografiert ist, erscheint hier die
+        interaktive Karte — gerendert auf unserem Homesystem, ausgeliefert
+        von dieser Seite.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOGIN-HINWEIS -->
+  <aside class="login-note">
+    <svg class="lock" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4" y="10" width="16" height="11" stroke="currentColor" stroke-width="2"/>
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2"/>
+      <circle cx="12" cy="15.5" r="1.6" fill="currentColor"/>
+    </svg>
+    <div>
+      <p>Spielerbereich in Vorbereitung</p>
+      <p>Logins, persönliche Markierungen auf der Karte und individuelle Statistiken kommen in einer späteren Phase. Diese Seite bleibt bis dahin offen für alle.</p>
+    </div>
+  </aside>
+
+</main>
+
+<footer class="wrap">
+  <span>&copy; <span id="year"></span> max-kuehn.com · Minecraft-Community</span>
+  <span class="tagline">zu hause <em>gerendert</em>, aus der cloud <em>geliefert</em>.</span>
+</footer>
+
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/*
+ * Weltkarten-Einbettung (Phase 02)
+ * --------------------------------
+ * MAP_BASE zeigt auf die BlueMap-Webapp relativ zu dieser Seite
+ * (Standard: Unterpfad ./map/ — dort landet später der rsync-Abgleich).
+ * Solange dort keine Kartendaten liegen (Probe auf ./maps/ schlägt fehl
+ * bzw. liefert 404), bleibt der Overlay sichtbar und der Frame leer.
+ * Sobald Daten existieren (jede Antwort != 404 gilt als Existenznachweis),
+ * blendet die Seite den Overlay aus und lädt den Viewer.
+ *
+ * Bei anderem Zielpfad nur MAP_BASE anpassen (z.B. '../karte/' o. ä.).
+ */
+(function initMap(){
+  const MAP_BASE = './map/';
+  const overlay = document.getElementById('mapOverlay');
+  const embed   = document.getElementById('mapEmbed');
+
+  async function probe(url){
+    try{
+      const r = await fetch(MAP_BASE + url, {cache:'no-store'});
+      return r.status !== 404;
+    }catch(_){ return false; }
+  }
+
+  probe('maps/').then(ok=>{
+    if(!ok) return;
+    overlay.classList.add('hidden');
+    embed.src = MAP_BASE;
+  });
+})();
+</script>
+
+</body>
+</html>

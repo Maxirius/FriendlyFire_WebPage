@@ -1,0 +1,13 @@
+# Secrets niemals committen!
+*.env
+*.secret
+*_secret*
+
+# Game-Dateien gehören nicht in die Webseiten-Repo
+mods-*/
+*.jar
+
+# Arbeitsreste
+websim/
+__pycache__/
+.DS_Store
