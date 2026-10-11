@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
-   TOKENS — dunkler Blocklook: quadratisch, kantig, 1 Accent
+   TOKENS - dark block look: square, angular, one accent
    ============================================================ */
 :root{
   --bg:        #101418;
@@ -19,9 +19,9 @@
   --ink:       #e9eee2;
   --muted:     #94a396;
   --border:    #26303a;
-  --accent:    #77cf52;   /* Grasblock-Grün */
+  --accent:    #77cf52;   /* grass block green */
   --accent-ink:#10230c;
-  --amber:     #ffc35c;   /* Fackel-Amber, sparsam */
+  --amber:     #ffc35c;   /* torch amber, sparingly */
   --font-body: "Space Grotesk", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-pixel:"Press Start 2P", monospace;
@@ -41,7 +41,7 @@ body{
     linear-gradient(90deg, var(--border) 1px, transparent 1px);
   background-size:48px 48px;
   background-position:center top;
-  opacity:.999; /* Raster wirkt sonst zu dominant → wird unten gedämpft */
+  opacity:.999; /* grid would feel too dominant otherwise, dampened below */
 }
 body::before{
   content:"";position:fixed;inset:0;z-index:-1;
@@ -130,7 +130,7 @@ h1 .hl{color:var(--accent);}
 .cta.ghost:hover{background:var(--panel);border-color:var(--muted);}
 .cta.disabled{color:var(--muted);cursor:not-allowed;border-style:dashed;}
 
-/* Voxel-Hügellandschaft rechts */
+/* Voxel hillside, right column */
 .voxelfield{justify-self:end;width:100%;max-width:420px;}
 .voxelfield svg{display:block;width:100%;height:auto;}
 .caption{
@@ -182,7 +182,7 @@ section.phase-strip{
   padding:2px 7px;margin-top:12px;font-weight:600;
 }
 
-/* ---------- Weltkarte ---------- */
+/* ---------- World map ---------- */
 .map-section{
   border-top:1px solid var(--border);
   padding:64px 0 80px;
@@ -220,7 +220,7 @@ section.phase-strip{
 .map-overlay p{font-size:14px;color:var(--muted);max-width:44ch;text-wrap:pretty;}
 .map-overlay strong{color:var(--ink);}
 
-/* ---------- Hinweis Login ---------- */
+/* ---------- Login hint ---------- */
 .login-note{
   border:1px solid var(--border);background:var(--panel-2);
   padding:28px 32px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;
@@ -250,14 +250,17 @@ footer .tagline em{color:var(--accent);font-style:normal;}
 <body>
 
 <header>
-  <!-- PLATZHALTER: Wortmarke = technische Adresse, sobald Name/Domain stehen -->
+  <!--
+  PLACEHOLDER: wordmark = technical address until the server name/domain
+  is decided
+-->
   <div class="wrap nav">
     <a class="wordmark" href="/">MC.<em>MAX-KUEHN</em>.COM</a>
     <nav class="links">
       <a href="#karte">Weltkarte<span class="soon-tag">BALD</span></a>
       <a href="#statistiken">Statistiken<span class="soon-tag">BALD</span></a>
       <a href="#login" aria-disabled="true" onclick="return false;">Login</a>
-      <a class="btn-discord hide-mobile" href="#">Discord</a><!-- Invite-Link folgt -->
+      <a class="btn-discord hide-mobile" href="#">Discord</a><!-- invite link follows -->
     </nav>
   </div>
 </header>
@@ -280,18 +283,20 @@ footer .tagline em{color:var(--accent);font-style:normal;}
       </div>
     </div>
 
-    <!-- Dekorative Voxellandschaft (SVG, deterministisch) -->
+    <!--
+  Decorative voxel landscape (SVG, deterministic)
+-->
     <figure class="voxelfield" aria-hidden="true">
       <svg viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg">
-        <!-- Wolken -->
+        <!-- clouds -->
         <rect x="40"  y="26" width="42" height="10" fill="#2a333d"/>
         <rect x="196" y="16" width="30" height="10" fill="#2a333d"/>
         <rect x="230" y="26" width="18" height="10" fill="#222a33"/>
-        <!-- schwebende Insel -->
+        <!-- floating island -->
         <rect x="228" y="58" width="36" height="8" fill="#77cf52"/>
         <rect x="236" y="66" width="20" height="8" fill="#6a5a3e"/>
         <rect x="240" y="74" width="12" height="6" fill="#59492f"/>
-        <!-- Terrain: gestufte Säulen, Gras oben, Erde darunter -->
+        <!-- terrain: stepped columns, grass tops, dirt beneath -->
         <g>
           <!-- col heights (deterministisches Profil) -->
           <rect x="0"   y="130" width="20" height="90" fill="#5aa63f"/><rect x="0"   y="140" width="20" height="80" fill="#6a5a3e"/>
@@ -311,10 +316,10 @@ footer .tagline em{color:var(--accent);font-style:normal;}
           <rect x="280" y="68"  width="20" height="152" fill="#67bf47"/><rect x="280" y="78"  width="20" height="142" fill="#6a5a3e"/>
           <rect x="300" y="56"  width="20" height="164" fill="#5aa63f"/><rect x="300" y="66"  width="20" height="154" fill="#6a5a3e"/>
         </g>
-        <!-- Baumkrone auf mittlerer Kuppe -->
+        <!-- tree canopy on the middle crest -->
         <rect x="182" y="64" width="16" height="14" fill="#3f8f2f"/>
         <rect x="186" y="56" width="8"  height="8"  fill="#3f8f2f"/>
-        <!-- Fackelpunkt -->
+        <!-- torch dot -->
         <rect x="264" y="50" width="4" height="6" fill="#ffc35c"/>
       </svg>
       <figcaption class="caption">// gerendert zuhause · geliefert aus der cloud</figcaption>
@@ -352,7 +357,7 @@ footer .tagline em{color:var(--accent);font-style:normal;}
     </div>
   </section>
 
-  <!-- WELTKARTE -->
+  <!-- WORLD MAP -->
   <section class="map-section" id="weltkarte">
     <div class="section-head">
       <h2>Weltkarte</h2>
@@ -371,7 +376,7 @@ footer .tagline em{color:var(--accent);font-style:normal;}
     </div>
   </section>
 
-  <!-- LOGIN-HINWEIS -->
+  <!-- LOGIN HINT -->
   <aside class="login-note">
     <svg class="lock" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <rect x="4" y="10" width="16" height="11" stroke="currentColor" stroke-width="2"/>
@@ -395,16 +400,16 @@ footer .tagline em{color:var(--accent);font-style:normal;}
 document.getElementById('year').textContent = new Date().getFullYear();
 
 /*
- * Weltkarten-Einbettung (Phase 02)
- * --------------------------------
- * MAP_BASE zeigt auf die BlueMap-Webapp relativ zu dieser Seite
- * (Standard: Unterpfad ./map/ — dort landet später der rsync-Abgleich).
- * Solange dort keine Kartendaten liegen (Probe auf ./maps/ schlägt fehl
- * bzw. liefert 404), bleibt der Overlay sichtbar und der Frame leer.
- * Sobald Daten existieren (jede Antwort != 404 gilt als Existenznachweis),
- * blendet die Seite den Overlay aus und lädt den Viewer.
+ * World map embedding (phase 02)
+ * ------------------------------
+ * MAP_BASE points at the BlueMap web app relative to this page
+ * (default: sub-path ./map/ - that is where the rsync payload lands).
+ * As long as no map data exists there (probe on ./maps/ fails or 404s),
+ * the overlay stays visible and the frame stays empty. Once data exists
+ * (any response != 404 proves existence), the overlay fades out and the
+ * viewer loads.
  *
- * Bei anderem Zielpfad nur MAP_BASE anpassen (z.B. '../karte/' o. ä.).
+ * To change the target path, adjust MAP_BASE only.
  */
 (function initMap(){
   const MAP_BASE = './map/';

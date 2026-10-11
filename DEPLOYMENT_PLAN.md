@@ -1,18 +1,21 @@
-# Deployment-Plan: Minecraft-Website auf Netcup
+# Deployment Plan: Minecraft Website on Netcup
 
-Stand: erste Diskussion, noch nichts deployed.
+Last updated: after initial deployment of the welcome page.
 
-## Zielbild
-- Subdomain (z.B. map.max-kuehn.com, Name TBD) → NPM → minecraft-site-Container
-- Statische Inhalte, komplett gehostet auf Netcup RS 1000 G11 (Traffic geht nicht über heimischen Uplink)
-- Karte: lokal gerenderte Tiles (BlueMap-Fabric-Mod auf dem MC-Server, AMP/DebianVM/Unraid)
-  → rsync über bestehendes WireGuard (OPNsense ↔ Netcup) → /opt/hostings/minecraft_site/
-- Statistiken: später JSON-Exporte, gleicher Sync-Weg
-- Login/User-Bereich: spätere Phase
+## Target picture
+- Subdomain (e.g. map.max-kuehn.com, name TBD) → NPM → minecraft-site container
+- Static content, fully hosted on the Netcup RS 1000 G11 (traffic never goes
+  through the home upstream)
+- Map: locally rendered tiles (BlueMap fabric mod on the MC server,
+  AMP/DebianVM/Unraid)
+  → rsync over the existing WireGuard tunnel (OPNsense ↔ Netcup)
+  → /opt/hostings/minecraft_site/
+- Statistics: JSON exports later, same sync path
+- Login/player area: later phase
 
-## Schritte (noch offen)
-1. Online-Snapshot vom Netcup-Server (PFLICHT vor jeder Änderung)
-2. Neuen Service in /opt/hostings/docker-compose.yaml ergänzen:
+## Steps (completed)
+1. ✅ Online snapshot taken (`pre-minecraft-site`)
+2. ✅ New service added to /opt/hostings/docker-compose.yaml:
    ```yaml
    minecraft-site:
        image: nginxinc/nginx-unprivileged:latest
@@ -24,11 +27,17 @@ Stand: erste Diskussion, noch nichts deployed.
           - docker_network
        user: "${H_UID}:${H_GID}"
    ```
-3. Route in NPM anlegen (der User macht das selbst)
-4. rsync-Zielverzeichnis + evtl. dedizierter User für Uploads klären
-5. BlueMap-Mod auf Kompatibilität mit MC 26.3 prüfen (Version sehr frisch!)
-6. Alter `dynmap`-Container kann irgendwann entsorgt werden (gestoppt seit Hardening)
+   Backup of the previous compose file: `docker-compose.yaml.bak_pre_mcsite`
+3. 🔲 NPM route (to be created by the user manually) — forward to
+   `minecraft_site:8080`
+4. 🔲 Dedicated rsync/upload user still to discuss
+5. 🔲 Check BlueMap compatibility with MC 26.3 (very fresh version!)
+6. 🔲 Legacy `dynmap` container can eventually be removed (stopped since
+   hardening anyway)
 
-## Bereits erstellt
-- Willkommensseite (rein statisch, dark voxel-theme):
-  /opt/data/projects/Gameserver/Minecraft 2026/website/welcome/index.html
+## Already deployed
+- Welcome page (purely static, dark voxel theme):
+  `/opt/hostings/minecraft_site/site/index.html`
+  (source of truth: `website/welcome/index.html` in this repo)
+- World-map section with automatic wake-up: probes `./map/maps/`;
+  once BlueMap tile data exists there, the viewer loads automatically

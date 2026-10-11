@@ -1,23 +1,23 @@
 # FriendlyFire_WebPage
 
-Webpräsenz für den FriendlyFire Minecraft-Server (Fabric 26.3).
+Web presence for the FriendlyFire Minecraft server (Fabric 26.3).
 
-Enthält die öffentliche Willkommensseite, später Weltkarte (BlueMap) und
-Statistiken. Gehostet auf dem Netcup-Root-Server, Inhalte werden lokal
-gerendert und per rsync über WireGuard synchronisiert.
+Contains the public welcome page, later the world map (BlueMap) and
+statistics. Hosted on the Netcup root server; content is rendered locally
+and synced via rsync over WireGuard.
 
-## Struktur
+## Structure
 
 ```
-website/welcome/index.html   Willkommensseite (statisch, self-contained)
-DEPLOYMENT_PLAN.md           Architektur & Deployment-Schritte
+website/welcome/index.html   Welcome page (static, self-contained)
+DEPLOYMENT_PLAN.md           Architecture & deployment steps
 ```
 
-## Deployment (Kurzform)
+## Deployment (quick guide)
 
-1. Änderungen committen & pushen
-2. `scp`/`rsync` von `website/welcome/index.html` nach
+1. Commit & push changes
+2. `scp`/`rsync` from `website/welcome/index.html` to
    `host.max-kuehn.com:/opt/hostings/minecraft_site/site/`
-3. NPM-Route: `minecraft_site:8080` (siehe DEPLOYMENT_PLAN.md)
+3. NPM route: `minecraft_site:8080` (see DEPLOYMENT_PLAN.md)
 
-Später: `map/`-Unterordner als rsync-Ziel für BlueMap-Tiles.
+Later: `map/` subfolder serves as the rsync target for BlueMap tiles.
