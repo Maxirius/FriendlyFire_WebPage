@@ -68,6 +68,7 @@ public final class FfWhitelistSync {
     private ScheduledExecutorService scheduler;
     private HttpClient http;
     private URI feedUri;
+    private String authToken;
     private Duration interval;
     private Path whitelistJson;
 
@@ -149,6 +150,7 @@ public final class FfWhitelistSync {
         HttpRequest req = HttpRequest.newBuilder(feedUri)
                 .timeout(Duration.ofSeconds(10))
                 .header("Accept", "application/json")
+                .header("Authorization", "Bearer " + authToken)
                 .GET()
                 .build();
         HttpResponse<String> resp =
@@ -257,6 +259,7 @@ public final class FfWhitelistSync {
             throw new IOException("feed-url/token not configured");
         }
         feedUri = URI.create(urlProp);
+        authToken = token;
         interval = Duration.ofSeconds(secs);
         whitelistJson = dataDir.getParent()
                 .resolve("global-whitelist")

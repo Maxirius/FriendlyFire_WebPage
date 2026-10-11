@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 os.environ["FF_PUBLIC_ORIGIN"] = "https://mc.test.example"
 os.environ["FF_COOKIE_SECURE"] = "1"
+os.environ["FF_SYNC_TOKEN"] = "test-sync-token"
 os.environ.pop("FF_ADMIN_EMAIL", None)
 
 import pytest
