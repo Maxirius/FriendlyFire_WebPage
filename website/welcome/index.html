@@ -356,8 +356,8 @@ footer .tagline em{color:var(--accent);font-style:normal;}
         Weltkarte zum Erkunden, Statistiken zum Stöbern und später ein eigener
         Bereich für angemeldete Spieler.
       </p>
-      <div class="cta-row">
-        <a class="cta primary" href="/login">Spielerbereich</a>
+      <div class="cta-row" id="ctaRow">
+        <a class="cta primary" href="/login" id="ctaMain">Spielerbereich</a>
         <a class="cta ghost" href="#roadmap">Was geplant ist ↓</a>
       </div>
     </div>
@@ -578,7 +578,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
       setTimeout(refresh,30000);
     }
   }
-  // Nav-Adaption: eingeloggt => "Mein Konto"+Logout statt Login-Button.
+  // Nav-Adaption: eingeloggt => Chip + Logout statt Login-Button.
   (async()=>{
     const dash=document.getElementById('navDash'),
           login=document.getElementById('navLogin');
@@ -589,8 +589,10 @@ document.getElementById('year').textContent = new Date().getFullYear();
       login.style.display='none';
       dash.style.display='';
       dash.textContent=me.nickname;
+      // Primary CTA switches to the account area (where invites live).
+      const cta=document.getElementById('ctaMain');
+      if(cta){cta.href='/dashboard.html';cta.textContent='Mein Konto · Einladungen';}
       if(me.role==='admin'){
-        dash.setAttribute('href','/');
         const adm=document.createElement('a');
         adm.href='/admin'; adm.textContent='Admin';
         adm.className='hide-mobile';

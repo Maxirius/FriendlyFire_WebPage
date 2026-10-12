@@ -203,11 +203,14 @@ function paintHeader(me){
     <a class="chip" href="/">
       <img src="/avatar/${encodeURIComponent(me.nickname)}.png" alt="">
       <span>${esc(me.nickname)}</span>
-      ${me.role==='admin' ? '<span class="role-badge">ADMIN</span>'
-                          : ''}
     </a>
-    ${me.role==='admin'
-      ? '<a class="linkish" href="/admin">Admin-Portal</a>' : ''}`;
+    <a class="linkish" href="/">Übersicht</a>
+    ${me.role==='admin' ? '<a class="linkish" href="/admin">Admin</a>' : ''}
+    <button class="linkish" id="navLogout" style="padding:8px 10px">Logout</button>`;
+  qs('#navLogout').addEventListener('click',async ()=>{
+    try{await api('POST','/api/logout');}catch(_){}
+    location.href='/login';
+  });
 }
 
 // ---- nickname ---------------------------------------------------------

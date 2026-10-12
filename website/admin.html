@@ -177,8 +177,14 @@ function paintHeader(me){
     <a class="chip" href="/">
       <img src="/avatar/${encodeURIComponent(me.nickname)}.png" alt="">
       <span>${esc(me.nickname)}</span>
-      <span class="role-badge">ADMIN</span>
-    </a>`;
+    </a>
+    <a class="linkish" href="/">Übersicht</a>
+    <a class="linkish" href="/dashboard.html">Mein Konto</a>
+    <button class="linkish" id="navLogout" style="padding:8px 10px">Logout</button>`;
+  qs('#navLogout').addEventListener('click',async ()=>{
+    try{await api('POST','/api/logout');}catch(_){}
+    location.href='/login';
+  });
 }
 
 // ---- stats ------------------------------------------------------------
