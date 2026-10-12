@@ -337,7 +337,8 @@ footer .tagline em{color:var(--accent);font-style:normal;}
       <a href="#serverstatus">Status</a>
       <a href="#weltkarte">Weltkarte</a>
       <a href="#statistiken">Statistiken<span class="soon-tag">BALD</span></a>
-      <a href="/login">Login</a>
+      <a class="hide-mobile" href="/" id="navDash" style="display:none">Mein Konto</a>
+      <a href="/login" id="navLogin">Login</a>
       <a class="btn-discord hide-mobile" href="#">Discord</a><!-- invite link follows -->
     </nav>
   </div>
@@ -577,6 +578,35 @@ document.getElementById('year').textContent = new Date().getFullYear();
       setTimeout(refresh,30000);
     }
   }
+  // Nav-Adaption: eingeloggt => "Mein Konto"+Logout statt Login-Button.
+  (async()=>{
+    const dash=document.getElementById('navDash'),
+          login=document.getElementById('navLogin');
+    try{
+      const r=await fetch('/api/me',{credentials:'same-origin'});
+      if(!r.ok) return;                       // anonymous: unchanged
+      const me=(await r.json()).user;
+      login.style.display='none';
+      dash.style.display='';
+      dash.textContent=me.nickname;
+      if(me.role==='admin'){
+        dash.setAttribute('href','/');
+        const adm=document.createElement('a');
+        adm.href='/admin'; adm.textContent='Admin';
+        adm.className='hide-mobile';
+        login.parentNode.insertBefore(adm,login);
+      }
+      const out=document.createElement('a');
+      out.href='#'; out.textContent='Logout';
+      out.addEventListener('click',async ev=>{
+        ev.preventDefault();
+        try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'});}catch(_){}
+        location.href='/login';
+      });
+      login.parentNode.appendChild(out);
+    }catch(_){/* anonymous */}
+  })();
+
   // ----- ping test -----
   const pingBtn=document.getElementById('pingBtn');
   const pingHint=document.getElementById('pingHint');

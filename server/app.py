@@ -781,6 +781,21 @@ class ExtraReq(BaseModel):
     note: str = ""
 
 
+@app.get("/api/admin/whitelist/extras")
+async def list_extras(user: CurrentUser, tx: DbDep):
+    require_admin(user)
+    rows = tx.all_rows(
+        "SELECT uuid,name,note,source,created_at FROM whitelist_extras"
+        " ORDER BY created_at DESC")
+    return {
+        "revision": dbm.whitelist_revision(tx),
+        "extras": [{
+            "uuid": r["uuid"], "name": r["name"], "note": r["note"],
+            "source": r["source"], "createdAt": r["created_at"],
+        } for r in rows],
+    }
+
+
 @app.post("/api/admin/whitelist/extras")
 async def add_extra(req: ExtraReq, request: Request, user: CurrentUser,
                     tx: DbDep):
@@ -943,7 +958,7 @@ _EXCLUDE = ("/api/", "/gate", "/health", "/invite/", "/reset/",
             "/whitelist.txt", "/avatar/")
 
 
-_PROTECTED_PAGES = {"", "index.html", "dashboard.html"}
+_PROTECTED_PAGES = {"", "index.html", "dashboard.html", "admin.html"}
 
 
 @app.get("/{rest:path}")

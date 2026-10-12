@@ -205,7 +205,9 @@ function paintHeader(me){
       <span>${esc(me.nickname)}</span>
       ${me.role==='admin' ? '<span class="role-badge">ADMIN</span>'
                           : ''}
-    </a>`;
+    </a>
+    ${me.role==='admin'
+      ? '<a class="linkish" href="/admin">Admin-Portal</a>' : ''}`;
 }
 
 // ---- nickname ---------------------------------------------------------

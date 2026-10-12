@@ -62,6 +62,15 @@ const ERRORS={
   rate_limited:'Zu viele Versuche — bitte kurz warten.',
   missing_origin:'Bitte Seite direkt über mc.max-kuehn.com aufrufen.',
 };
+
+// Already logged in? Straight to the account area.
+(async()=>{
+  try{
+    const r=await fetch('/api/me',{credentials:'same-origin'});
+    if(r.ok) location.replace('/');
+  }catch(_){}
+})();
+
 document.getElementById('loginForm').addEventListener('submit',async ev=>{
   ev.preventDefault();
   const btn=document.getElementById('submitBtn');
