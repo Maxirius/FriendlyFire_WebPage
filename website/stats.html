@@ -261,10 +261,21 @@ document.addEventListener('click',ev=>{
 
 (async()=>{
   qs('#yr').textContent=new Date().getFullYear();
-  // Determine login state purely from the data endpoint: if it 401s, the
-  // session is truly gone (nginx would have bounced us before render).
+  // Determine login state purely from the data endpoint. Transient
+  // failures (busy SQLite while the session refreshes, ingest racing)
+  // get retried before we declare defeat — a 401 however is decisive.
+  async function bootFetch(attempts=3){
+    for(let i=0;i<attempts;i++){
+      try{ return await api('GET','/api/stats/ingame'); }
+      catch(err){
+        if(err&&err.message==='anon'){throw err;}
+        if(i<attempts-1){ await new Promise(ok=>setTimeout(ok,1000+i*1000)); }
+        else { throw err; }
+      }
+    }
+  }
   try{
-    DATA=await api('GET','/api/stats/ingame');
+    DATA=await bootFetch();
     // Header paints opportunistically (needs /api/me; failing it is fine —
     // the wall guarantees we ARE logged in at this point).
     try{ paintHeader((await api('GET','/api/me')).user); }catch(_){}
