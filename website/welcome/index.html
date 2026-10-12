@@ -588,7 +588,13 @@ document.getElementById('year').textContent = new Date().getFullYear();
       const me=(await r.json()).user;
       login.style.display='none';
       dash.style.display='';
-      dash.textContent=me.nickname;
+      // Profile chip with avatar so the nickname reads as a PERSON,
+      // not as another nav item (avoid confusion with the Admin link).
+      dash.innerHTML =
+        `<img src="/avatar/${encodeURIComponent(me.nickname)}.png" alt="" `+
+        `style="width:18px;height:18px;image-rendering:pixelated;`+
+        `vertical-align:-4px;margin-right:6px;background:#0b0e12;">`+
+        esc(me.nickname);
       // Primary CTA switches to the account area (where invites live).
       const cta=document.getElementById('ctaMain');
       if(cta){cta.href='/dashboard.html';cta.textContent='Mein Konto · Einladungen';}
