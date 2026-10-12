@@ -172,43 +172,25 @@ let DATA=null;
 let ACTIVE_CAT=null;
 
 async function api(path){
-  // Two engines: fetch first; if the response smells like HTML (edge/gate
-  // hiccup), fall back to XHR which shares no fetch-internal state.
-  for(let engine=0;engine<2;engine++){
-    let status=-1, ctype='', text='';
+  // Minimal, proven-simple: fetch → text → sniff → parse. One retry.
+  let lastErr=null;
+  for(let attempt=0;attempt<2;attempt++){
     try{
-      if(engine===0){
-        const r=await fetch(path,{credentials:'same-origin',cache:'no-store'});
-        status=r.status; ctype=r.headers.get('content-type')||'';
-        if(status===401){location.href='/login';throw new Error('anon');}
-        if(status===0){continue;}
-        if(!r.ok) throw new Error('http-'+status);
-        text=await r.text();
-      }else{
-        const x=await new Promise((res,rej)=>{
-          const xhr=new XMLHttpRequest();
-          xhr.open('GET',path,true);
-          xhr.withCredentials=true;
-          xhr.onload=()=>res(xhr);
-          xhr.onerror=()=>rej(new Error('xhr-error'));
-          xhr.send();
-        });
-        status=x.status; ctype=x.getResponseHeader('content-type')||'';
-        if(status===401){location.href='/login';throw new Error('anon');}
-        if(status!==200) throw new Error('http-'+status);
-        text=x.responseText;
-      }
-      if(!ctype.includes('json') && !text.trim().startsWith('{')){
-        continue;   // HTML masquerade: try the other engine
+      const r=await fetch(path,{credentials:'same-origin',cache:'no-store'});
+      if(r.status===401){location.href='/login';throw new Error('anon');}
+      if(!r.ok){throw new Error('http-'+r.status);}
+      const text=await r.text();
+      if(!text.trim().startsWith('{')){
+        throw new Error('html-response');   // edge/gate transient
       }
       return JSON.parse(text);
     }catch(err){
       if(err&&err.message==='anon') throw err;
-      if(engine===1) throw err instanceof Error ? err : new Error(String(err));
-      // else fall through to XHR engine
+      lastErr=err;
+      if(attempt===0){await new Promise(ok=>setTimeout(ok,1200));}
     }
   }
-  throw new Error('unreachable-engine');
+  throw lastErr || new Error('api-failed');
 }
 
 function paintHeader(me){
