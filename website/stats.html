@@ -278,26 +278,27 @@ document.addEventListener('click',ev=>{
 
 (async()=>{
   qs('#yr').textContent=new Date().getFullYear();
-  qs('#updatedLine').textContent='// boot...';
-  // Let the navigating request (auth gate) settle before the first API
-  // call — eliminates a cold-load race observed with the edge.
-  await new Promise(ok=>setTimeout(ok,300));
-  // Simple sequential boot: data first, retries on transients, honest
-  // inline error otherwise. A 401 alone redirects to /login.
-  for(let i=0;i<3;i++){
+  // Patient boot: the first fetch(es) after a cold navigation can hit a
+  // warming edge/gate path and return HTML; keep retrying generously
+  // instead of giving up.
+  qs('#updatedLine').textContent='// verbinde …';
+  let done=false;
+  for(let i=0;i<8 && !done;i++){
     try{
       DATA=await api('GET','/api/stats/ingame');
+      done=true;
       break;
     }catch(err){
-      if(err&&err.message==='anon'){return;}
-      if(i===2){
+      if(err&&(err.message==='anon')){return;}
+      if(i===7){
         qs('#updatedLine').textContent='// fehler: '+err.message;
         document.getElementById('boardArea').innerHTML=
           '<div class="panel"><h2>Statistiken nicht verfügbar</h2>'+
           '<p class="desc">('+esc(err.message)+') — Seite später neu laden.</p></div>';
         return;
       }
-      await new Promise(ok=>setTimeout(ok,1000+i*1000));
+      qs('#updatedLine').textContent=`// verbinde … (versuch ${i+2})`;
+      await new Promise(ok=>setTimeout(ok,800+i*700));
     }
   }
   try{ paintHeader((await api('GET','/api/me')).user); }catch(_){}
