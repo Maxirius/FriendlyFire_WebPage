@@ -1,5 +1,6 @@
 """Mailcow SMTP sender for invite/password-reset mails (plain smtplib)."""
 import asyncio
+import hashlib
 import logging
 import os
 import ssl
@@ -9,6 +10,31 @@ from email.utils import formataddr
 from typing import Optional
 
 log = logging.getLogger(__name__)
+
+# Mailcow's postfix presents a self-signed cert (its ACME renewal has been
+# expired since June 2025). Instead of disabling verification entirely we
+# PIN the presented certificate's SHA-256 fingerprint; rotate this value
+# after Mailcow obtains a proper LE cert again (override via env).
+_EXPECTED_SMTP_CERT_SHA256 = os.environ.get(
+    "FF_SMTP_CERT_PIN",
+    "97fc7211a7c33eb581083f7e43f739bce697996a71bbeac0615e25c10a50dc33",
+)
+
+
+def _pinned_ssl_context() -> ssl.SSLContext:
+    """Require TLS with SOME cert; the fingerprint check happens after the
+    handshake in send_sync (CA chains and hostname checks are meaningless
+    against a self-signed cert)."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
+def _pin_matches(peer_der: bytes) -> bool:
+    return (hashlib.sha256(peer_der).hexdigest().lower()
+            == _EXPECTED_SMTP_CERT_SHA256.lower())
+
 
 
 def _smtp_conf_from_env():
@@ -107,7 +133,7 @@ def send_sync(to: str, subject: str, html: str) -> None:
     msg.set_content(_strip_html(html))
     msg.add_alternative(html, subtype="html")
 
-    ctx = ssl.create_default_context()
+    ctx = _pinned_ssl_context()
     if tls == "ssl":
         server_cls = lambda: smtplib.SMTP_SSL(host, port, context=ctx)  # noqa: E731
     elif tls == "none":
@@ -118,6 +144,13 @@ def send_sync(to: str, subject: str, html: str) -> None:
     with server_cls() as srv:
         if tls == "starttls":
             srv.starttls(context=ctx)
+            peer = srv.sock.getpeercert(binary_form=True)  # SSL socket now
+            if peer is None:
+                raise RuntimeError("SMTP offered no TLS certificate")
+            if not _pin_matches(peer):
+                raise RuntimeError(
+                    "SMTP cert fingerprint mismatch (MITM or rotated cert;"
+                    " update FF_SMTP_CERT_PIN)")
         if user:
             srv.login(user, pwd)
         srv.send_message(msg)
