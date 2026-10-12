@@ -174,7 +174,7 @@ let ACTIVE_CAT=null;
 async function api(path){
   const r=await fetch(path,{credentials:'same-origin'});
   if(r.status===401){location.href='/login';throw new Error('anon');}
-  if(!r.ok) throw new Error('http');
+  if(!r.ok) throw new Error('http-'+r.status);   // caller decides UX
   return r.json();
 }
 
@@ -261,15 +261,13 @@ document.addEventListener('click',ev=>{
 
 (async()=>{
   qs('#yr').textContent=new Date().getFullYear();
-  try{
-    const me=(await api('GET','/api/me')).user;
-    paintHeader(me);
-  }catch(err){
-    if(err&&err.message==='anon'){return;}
-    location.href='/login';return;
-  }
+  // Determine login state purely from the data endpoint: if it 401s, the
+  // session is truly gone (nginx would have bounced us before render).
   try{
     DATA=await api('GET','/api/stats/ingame');
+    // Header paints opportunistically (needs /api/me; failing it is fine —
+    // the wall guarantees we ARE logged in at this point).
+    try{ paintHeader((await api('GET','/api/me')).user); }catch(_){}
     const cats=DATA.categories||[];
     const hashCat=(location.hash||'').replace('#','');
     ACTIVE_CAT = cats.some(c=>c.id===hashCat) ? hashCat
@@ -285,7 +283,8 @@ document.addEventListener('click',ev=>{
         paintSidebar(); paintBoards(); paintProfiles();
       }catch(_){}
     },120000);
-  }catch(_){
+  }catch(err){
+    if(err&&err.message==='anon'){return;}   // redirected to /login already
     document.getElementById('boardArea').innerHTML=
       '<div class="panel"><h2>Statistiken nicht verfügbar</h2>'+
       '<p class="desc">Das Archiv antwortet gerade nicht — später erneut.</p></div>';
