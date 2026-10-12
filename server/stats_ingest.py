@@ -9,6 +9,7 @@ Vanilla stats are cumulative counters; UPSERT keeps the archive a
 faithful mirror without any delta logic.
 """
 import asyncio
+import json
 import logging
 import os
 import time
@@ -45,13 +46,20 @@ CREATE TABLE IF NOT EXISTS ingested_players (
   play_hours     REAL NOT NULL DEFAULT 0,
   advancements_done INTEGER NOT NULL DEFAULT 0,
   advancements_total INTEGER NOT NULL DEFAULT 0,
-  raw            TEXT NOT NULL,          -- full mod payload (JSON)
+  raw            TEXT NOT NULL,          -- compact payload (JSON)
+  detail         TEXT,                   -- full /api/players/<uuid> payload
   fetched_at     REAL NOT NULL
 );
 """
 
 
 def _ensure_tables(conn) -> None:
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(ingested_players)").fetchall()}
+    if "ingested_players" in {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}:
+        if "detail" not in cols:
+            conn.execute("ALTER TABLE ingested_players ADD COLUMN detail TEXT")
+            conn.commit()
     conn.executescript(ARCHIVE_SCHEMA)
     conn.commit()
 
@@ -82,21 +90,25 @@ def archived_players(limit: int = 200) -> list[dict]:
         tx = dbm.Database(conn)
         rows = tx.all_rows(
             "SELECT uuid,name,play_hours,advancements_done,advancements_total,"
-            "raw,fetched_at FROM ingested_players ORDER BY play_hours DESC"
+            "raw,detail,fetched_at FROM ingested_players ORDER BY play_hours DESC"
             " LIMIT ?", max(1, min(int(limit), 500)))
         out = []
         for r in rows:
             try:
-                raw = r["raw"] and __import__("json").loads(r["raw"])
+                raw = r["raw"] and json.loads(r["raw"])
             except Exception:
                 raw = {}
+            try:
+                detail = (r["detail"] and json.loads(r["detail"])) or None
+            except Exception:
+                detail = None
             out.append({
                 "uuid": r["uuid"], "name": r["name"],
                 "playHours": r["play_hours"],
                 "advancementsDone": r["advancements_done"],
                 "advancementsTotal": r["advancements_total"],
                 "fetchedAt": r["fetched_at"],
-                "raw": raw,
+                "raw": raw, "detail": detail,
             })
         return out
     finally:
@@ -122,7 +134,7 @@ async def ingest_once() -> dict:
     """Single pull cycle. Returns a small report for logging/tests."""
     cli = await _client()
     base = _source_base()
-    report: dict[str, Any] = {"playersUpserted": 0, "ok": False}
+    report: dict[str, Any] = {"playersUpserted": 0, "detailsOk": 0, "ok": False}
     try:
         resp = await cli.get(f"{base}/api/players")
         resp.raise_for_status()
@@ -136,21 +148,36 @@ async def ingest_once() -> dict:
             now = time.time()
             for p in players:
                 adv = p.get("advancements") or {}
+
+                # Full detail (54 boards + vanilla raw) per player.
+                detail_json = None
+                uuid = p.get("uuid", "")
+                try:
+                    det = await cli.get(f"{base}/api/players/{uuid}")
+                    if det.status_code == 200:
+                        dj = det.json()
+                        detail_json = json.dumps(dj)
+                        report["detailsOk"] += 1
+                except Exception:
+                    log.debug("detail fetch failed for %s", uuid)
+
                 tx.run(
                     "INSERT INTO ingested_players"
                     " (uuid,name,play_hours,advancements_done,"
-                    " advancements_total,raw,fetched_at)"
-                    " VALUES(?,?,?,?,?,?,?)"
+                    " advancements_total,raw,detail,fetched_at)"
+                    " VALUES(?,?,?,?,?,?,?,?)"
                     " ON CONFLICT(uuid) DO UPDATE SET"
                     " name=excluded.name, play_hours=excluded.play_hours,"
                     " advancements_done=excluded.advancements_done,"
                     " advancements_total=excluded.advancements_total,"
-                    " raw=excluded.raw, fetched_at=excluded.fetched_at",
-                    p.get("uuid", ""), p.get("name", ""),
+                    " raw=excluded.raw,"
+                    " detail=COALESCE(excluded.detail, ingested_players.detail),"
+                    " fetched_at=excluded.fetched_at",
+                    uuid, p.get("name", ""),
                     float(p.get("playHours") or 0),
                     int(adv.get("done") or 0),
                     int(adv.get("total") or 0),
-                    __import__("json").dumps(p), now,
+                    json.dumps(p), detail_json, now,
                 )
                 report["playersUpserted"] += 1
             tx.commit()
