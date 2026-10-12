@@ -274,6 +274,52 @@ section.phase-strip{
 .ping-route .val.good{color:var(--accent);}
 .ping-route .val.warn{color:var(--amber);}
 
+/* ---------- Mods ---------- */
+.mods-section{
+  border-top:1px solid var(--border);
+  padding:64px 0 80px;
+}
+.mod-cat-label{
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;
+  margin:34px 0 14px;display:flex;align-items:center;gap:12px;
+}
+.mod-cat-label:first-of-type{margin-top:0;}
+.mod-cat-label::after{content:"";flex:1;height:1px;background:var(--border);}
+.mod-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:14px;
+}
+.mod-card{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:16px 18px 14px;
+}
+.mod-card h4{
+  font-size:15px;font-weight:700;margin-bottom:2px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.mod-side{
+  font-family:var(--font-mono);font-size:9px;font-weight:500;
+  padding:2px 6px;letter-spacing:.05em;white-space:nowrap;
+}
+.mod-side.req{color:var(--amber);border:1px solid var(--amber);}
+.mod-side.cli{color:var(--danger);border:1px solid var(--danger);}
+.mod-side.srv{color:var(--muted);border:1px solid var(--border);}
+.mod-side.opt{color:var(--muted);border:1px dashed var(--border);}
+.mod-side.rec{color:var(--accent);border:1px dashed var(--accent);}
+.mod-tip{
+  margin-top:8px;font-size:13px;color:var(--muted);line-height:1.55;
+  text-wrap:pretty;
+}
+.mod-help{
+  margin-top:8px;font-family:var(--font-mono);font-size:11px;
+  color:var(--accent);
+}
+.mods-footnote{
+  margin-top:26px;font-family:var(--font-mono);font-size:11px;
+  color:var(--muted);
+}
+
 /* ---------- World map ---------- */
 .map-section{
   border-top:1px solid var(--border);
@@ -335,6 +381,7 @@ footer .tagline em{color:var(--accent);font-style:normal;}
     <a class="wordmark" href="/">MC.<em>MAX-KUEHN</em>.COM</a>
     <nav class="links">
       <a href="#serverstatus">Status</a>
+      <a href="#mods">Mods</a>
       <a href="#weltkarte">Weltkarte</a>
       <a href="#statistiken">Statistiken<span class="soon-tag">BALD</span></a>
       <a class="hide-mobile" href="/dashboard.html" id="navDash" style="display:none">Mein Konto</a>
@@ -453,6 +500,17 @@ footer .tagline em{color:var(--accent);font-style:normal;}
       <span class="ping-hint" id="pingHint">misst deine Latenz zu den Spielservern</span>
       <div class="ping-results" id="pingResults"></div>
     </div>
+  </section>
+
+  <!-- MODS -->
+  <section class="mods-section" id="mods">
+    <div class="section-head">
+      <h2>Mods</h2>
+      <span>was auf unserem Server läuft — und wie du es nutzt</span>
+    </div>
+    <div id="modShowcase"><!-- populated by script --></div>
+    <p class="mods-footnote" id="modsFootnote">// liste wird aus der
+      server-checkliste generiert · stand dynamisch</p>
   </section>
 
   <!-- WORLD MAP -->
@@ -684,6 +742,31 @@ document.getElementById('year').textContent = new Date().getFullYear();
       pingBtn.disabled=false;
     }
   });
+
+  // ----- mods showcase -----
+  (async()=>{
+    const host=document.getElementById('modShowcase');
+    const foot=document.getElementById('modsFootnote');
+    try{
+      const data=await (await fetch('/mods.json',{credentials:'same-origin'})).json();
+      host.innerHTML=data.categories.map(cat=>`
+<h3 class="mod-cat-label">${esc(cat.label)} (${cat.mods.length})</h3>
+<div class="mod-grid">
+${cat.mods.map(m=>`
+  <article class="mod-card">
+    <h4>${esc(m.name)}
+      <span class="mod-side ${esc(m.sideClass)}">${esc(m.sideBadge)}</span>
+    </h4>
+    ${m.tip?`<p class="mod-tip">${esc(m.tip)}</p>`:''}
+    ${m.clientHelp?`<p class="mod-help">// ${esc(m.clientHelp)}</p>`:''}
+  </article>`).join('')}
+</div>`).join('');
+      foot.textContent=`// ${data.totals.active} aktive mods · generiert aus `+
+        `${data.generatedFrom} · deaktiviert: ${data.totals.disabled}`;
+    }catch(_){
+      host.innerHTML='<p class="mod-tip">Modliste momentan nicht ladbar.</p>';
+    }
+  })();
 
   refresh();
 })();

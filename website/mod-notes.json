@@ -1,0 +1,119 @@
+{
+  "_comment": "Manual enrichment for the mod showcase generator. Keys are lowercase jar stems as they appear in CHECKLIST.md. Fields: category (gameplay/qol/tech/performance/server/client), tip (German, practical how-to), optional clientHelp.",
+  "mods": {
+    "ace_mc26.2-5.0.1.jar": {
+      "category": "gameplay",
+      "tip": "Schnellloren: Eisenkarren + Ofenkarren fahren deutlich schneller. Perfekt für lange Handelsstraßen — einfach normale Schienen nutzen, keine Spezialblöcke nötig."
+    },
+    "architectury-fabric-22.0.5.jar": {
+      "category": "tech",
+      "tip": "Bibliothek im Hintergrund — musst du nichts tun."
+    },
+    "better-hanging-signs-6.4.jar": {
+      "category": "gameplay",
+      "tip": "Hängeschilder können an Deckenhaken und unter Blöcken in mehr Ebenen platziert werden. Sneaken + rechtsklicken für diagonale Varianten."
+    },
+    "bluemap-5.29-fabric.jar": {
+      "category": "server",
+      "tip": "Rendered unsere Livewelt auf map.max-kuehn.com — nichts zu tun, einfach genießen."
+    },
+    "c2me-fabric-mc26.3-0.4.2-alpha.0.90.jar": {
+      "category": "performance",
+      "tip": "Lädt Chunks schneller — merklich bei großen Reisegruppen."
+    },
+    "cloth-config-fabric-26.3.159.jar": {
+      "category": "tech",
+      "tip": "Bibliothek im Hintergrund — musst du nichts tun."
+    },
+    "collective-26.3.0-8.45.jar": {
+      "category": "tech",
+      "tip": "Bibliothek im Hintergrund — musst du nichts tun."
+    },
+    "deathbackup-26.3.0-3.7.jar": {
+      "category": "gameplay",
+      "tip": "Nach dem Tod bleibt dein Inventar für einige Minuten am Sterbeort erhalten — hol es dir ruhig ab, kein Timer-Stress."
+    },
+    "distanthorizons-3.3.4-26.3-fabric-neoforge.jar": {
+      "category": "client",
+      "tip": "Sieht kilometerweit trotz kleiner Sichtweite aus. WICHTIG: Dieselbe Version 3.3.4 wie der Server installieren (Modrinth). Wer sie nicht hat, spielt normal weiter — nur ohne Ferneffekt.",
+      "clientHelp": "Download: Modrinth → Distant Horizons → Version 3.3.4 (Fabric)."
+    },
+    "elytratrims-fabric-4.9.1+26.3.jar": {
+      "category": "gameplay",
+      "tip": "Elytren mit Trim-Ornamenten veredeln (Smithing Table) — reine Optik, keine Statwerte."
+    },
+    "fallingtree-26.3-25.jar": {
+      "category": "gameplay",
+      "tip": "Baumstamm hacken = ganzer Baum fällt (Werkzeug muss passen!). Sneaken = nur einzelner Block."
+    },
+    "fabric-api-0.162.0+26.3.jar": {
+      "category": "tech",
+      "tip": "Bibliothek im Hintergrund — musst du nichts tun."
+    },
+    "fabric-language-kotlin-1.14.2+kotlin.2.4.21.jar": {
+      "category": "tech",
+      "tip": "Bibliothek im Hintergrund — musst du nichts tun."
+    },
+    "image2map-0.15.0+26.3.jar": {
+      "category": "gameplay",
+      "tip": "Bilder als Wandkarten: PNG in den Upload legen (Server-Team fragen) und mit dem Kartentisch auf eine Karte zaubern — ideal für Poster und Shopschilder."
+    },
+    "invis-item-frame-4.jar": {
+      "category": "gameplay",
+      "tip": "Itemrahmen unsichtbar schalten: Shears + rechtsklick auf den Rahmen. Nochmal klicken = wieder sichtbar."
+    },
+    "jamlib-fabric-2.3.1+26.3.x.jar": {
+      "category": "tech",
+      "tip": "Bibliothek im Hintergrund — musst du nichts tun."
+    },
+    "justmobheads-26.3.0-9.5.jar": {
+      "category": "gameplay",
+      "tip": "Monster und Tiere droppen selten ihre Köpfe — Sammlerstücke für Trophäenräume!"
+    },
+    "krypton-0.3.2.jar": {
+      "category": "performance",
+      "tip": "Optimiert die Netzwerkverbindung — weniger Lag beim Bauen weit weg vom Spawn."
+    },
+    "luckperms-fabric-5.5.85.jar": {
+      "category": "server",
+      "tip": "Rechte-Management (Ränge, Prefixe) — Team-thema, für Spieler unsichtbar."
+    },
+    "mastercutter-1.8.0-mc26.3.jar": {
+      "category": "gameplay",
+      "tip": "Blätter abbauen mit der Axt fällen Bäume schneller — kombiniert perfekt mit FallingTree (ganzer Baum fällt, Blätter inklusive)."
+    },
+    "lithium-fabric-0.26.2+mc26.3.jar": {
+      "category": "performance",
+      "tip": "Server-Physik optimiert — Redstone und Farmen laufen smoother."
+    },
+    "minimotd-fabric-mc26.3-2.2.5.jar": {
+      "category": "server",
+      "tip": "Unser Serverbanner in der Serverliste."
+    },
+    "no-enderman-grief-v3.1.1.jar": {
+      "category": "gameplay",
+      "tip": "Endermen tragen keine Blöcke mehr weg — deine Bauwerke bleiben heil."
+    },
+    "polymer-bundled-0.18.4+26.3.jar": {
+      "category": "tech",
+      "tip": "Bibliothek im Hintergrund — musst du nichts tun."
+    },
+    "rightclickharvest-fabric-4.6.2+26.3.x.jar": {
+      "category": "gameplay",
+      "tip": "Ernten ohne Hacken: Reifetes Getreide einfach ANKLICKEN (rechtsklick) — Feld bleibt angesät, Werkzeug bleibt heil."
+    },
+    "shulkerboxtooltip-fabric-5.4.2+26.3.jar": {
+      "category": "client",
+      "tip": "Shulkers zeigen ihren Inhalt als Tooltip, ohne sie zu öffnen. Client-Mod: bitte in deiner Modpack-Installation haben!",
+      "clientHelp": "Installiere 'Shulker Box Tooltip' 5.4.2 (Fabric) auf deinem Client."
+    },
+    "tabtps-fabric-mc26.3-1.4.2.jar": {
+      "category": "server",
+      "tip": "TPS/MSPT-Anzeige fürs Team — mit /tps einsehbar."
+    },
+    "tab v6.2.0.jar": {
+      "category": "server",
+      "tip": "Sortiert die TAB-Liste mit Rängen und Farben."
+    }
+  }
+}
