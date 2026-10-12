@@ -261,45 +261,41 @@ document.addEventListener('click',ev=>{
 
 (async()=>{
   qs('#yr').textContent=new Date().getFullYear();
-  // Determine login state purely from the data endpoint. Transient
-  // failures (busy SQLite while the session refreshes, ingest racing)
-  // get retried before we declare defeat — a 401 however is decisive.
-  async function bootFetch(attempts=3){
-    for(let i=0;i<attempts;i++){
-      try{ return await api('GET','/api/stats/ingame'); }
-      catch(err){
-        if(err&&err.message==='anon'){throw err;}
-        if(i<attempts-1){ await new Promise(ok=>setTimeout(ok,1000+i*1000)); }
-        else { throw err; }
+  qs('#updatedLine').textContent='// boot...';
+  // Simple sequential boot: data first, retries on transients, honest
+  // inline error otherwise. A 401 alone redirects to /login.
+  for(let i=0;i<3;i++){
+    try{
+      DATA=await api('GET','/api/stats/ingame');
+      break;
+    }catch(err){
+      if(err&&err.message==='anon'){return;}
+      if(i===2){
+        qs('#updatedLine').textContent='// fehler: '+err.message;
+        document.getElementById('boardArea').innerHTML=
+          '<div class="panel"><h2>Statistiken nicht verfügbar</h2>'+
+          '<p class="desc">('+esc(err.message)+') — Seite später neu laden.</p></div>';
+        return;
       }
+      await new Promise(ok=>setTimeout(ok,1000+i*1000));
     }
   }
-  try{
-    DATA=await bootFetch();
-    // Header paints opportunistically (needs /api/me; failing it is fine —
-    // the wall guarantees we ARE logged in at this point).
-    try{ paintHeader((await api('GET','/api/me')).user); }catch(_){}
-    const cats=DATA.categories||[];
-    const hashCat=(location.hash||'').replace('#','');
-    ACTIVE_CAT = cats.some(c=>c.id===hashCat) ? hashCat
-               : (cats[0]?cats[0].id:null);
-    paintSidebar(); paintBoards(); paintProfiles();
-    const lf=DATA.archive&&DATA.archive.lastFetch;
-    qs('#updatedLine').textContent = lf ?
-      `// archiv-stand: ${new Date(lf*1000).toLocaleString('de-DE')} · pulle alle 10 min` :
-      '// archiv-leer';
-    setInterval(async()=>{
-      try{
-        DATA=await api('GET','/api/stats/ingame');
-        paintSidebar(); paintBoards(); paintProfiles();
-      }catch(_){}
-    },120000);
-  }catch(err){
-    if(err&&err.message==='anon'){return;}   // redirected to /login already
-    document.getElementById('boardArea').innerHTML=
-      '<div class="panel"><h2>Statistiken nicht verfügbar</h2>'+
-      '<p class="desc">Das Archiv antwortet gerade nicht — später erneut.</p></div>';
-  }
+  try{ paintHeader((await api('GET','/api/me')).user); }catch(_){}
+  const cats=DATA.categories||[];
+  const hashCat=(location.hash||'').replace('#','');
+  ACTIVE_CAT = cats.some(c=>c.id===hashCat) ? hashCat
+             : (cats[0]?cats[0].id:null);
+  paintSidebar(); paintBoards(); paintProfiles();
+  const lf=DATA.archive&&DATA.archive.lastFetch;
+  qs('#updatedLine').textContent = lf ?
+    `// archiv-stand: ${new Date(lf*1000).toLocaleString('de-DE')} · pulle alle 10 min` :
+    '// archiv-leer';
+  setInterval(async()=>{
+    try{
+      DATA=await api('GET','/api/stats/ingame');
+      paintSidebar(); paintBoards(); paintProfiles();
+    }catch(_){}
+  },120000);
 })();
 </script>
 
