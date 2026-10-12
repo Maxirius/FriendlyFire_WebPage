@@ -308,6 +308,12 @@ document.addEventListener('click',ev=>{
     }catch(err){
       if(err&&(err.message==='anon')){return;}
       if(i===3){
+        // Self-heal: one soft reload often clears edge transients entirely.
+        if(!sessionStorage.getItem('ff_stats_healed')){
+          sessionStorage.setItem('ff_stats_healed','1');
+          location.reload();
+          return;
+        }
         qs('#updatedLine').textContent='// fehler: '+err.message;
         document.getElementById('boardArea').innerHTML=
           '<div class="panel"><h2>Statistiken nicht verfügbar</h2>'+
