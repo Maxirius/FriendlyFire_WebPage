@@ -1050,7 +1050,8 @@ _EXCLUDE = ("/api/", "/gate", "/health", "/invite/", "/reset/",
             "/whitelist.txt", "/avatar/")
 
 
-_PROTECTED_PAGES = {"", "index.html", "dashboard.html", "admin.html"}
+_PROTECTED_PAGES = {"", "index.html", "dashboard.html", "admin.html",
+                    "stats.html"}
 
 
 @app.get("/{rest:path}")
