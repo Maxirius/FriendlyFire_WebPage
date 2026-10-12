@@ -36,6 +36,19 @@ DEPLOYMENT_PLAN.md           Architecture & deployment steps
   without a session, so bypassing nginx gains nothing.
 - Whitelist automation: `GET /whitelist.txt` (admin-only) exports the
   verified player UUIDs for the Fabric server.
+- Server status: `GET /api/status/minecraft` (members-only, 20 s
+  server-side cache) probes Survival/Creative/the Velocity entrance via
+  the WireGuard tunnel (`mcstatus_service.py`, pure stdlib). Targets and
+  kinds configurable via `FF_MC_STATUS_TARGETS` (JSON array with
+  `id`/`label`/`kind`(`world`|`network`)/`address`). Answers carrying an
+  AMP-wrapper "Powered by AMP" MOTD are classified as `stopped`
+  (instance paused), not online. The welcome page renders this as a
+  status block (two world cards + a network bar).
+- Ping test: `GET /ping` is a tiny 204 beacon the page times with
+  `performance.now()` (median of 5 samples). `GET /api/ping/beacons`
+  returns the relay measurement plus optional extra beacons from
+  `FF_PING_BEACONS` (JSON array `[{label,url}]`) — meant for a future
+  direct-to-home endpoint so members can compare routes.
 
 ## Deployment (quick guide)
 

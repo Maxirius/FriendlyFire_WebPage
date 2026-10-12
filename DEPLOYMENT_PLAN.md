@@ -38,7 +38,7 @@ BlueMap stack details:
 ## Remaining items
 1. 🔲 ~~Login/player area~~ → IMPLEMENTED (see "Authentication architecture");
    awaiting deployment: build `friendlyfire-auth` image, insert compose
-   services, create Mailcow mailbox for notifications@max-kuehn.com, fill
+   services, create Mailcow mailbox for noreply@max-kuehn.com, fill
    `auth.env`, then flip the nginx config on minecraft_site
 2. 🔲 Discord invite link in the nav button
 3. 🔲 Final branding: server name / wordmark
@@ -58,7 +58,7 @@ Snapshot before any structural server change (compose edits, new services).
 ## Auth-service deployment steps (when approved)
 1. Snapshot gate (`pre-minecraft-auth` online snapshot).
 2. Sync `server/` to `/opt/hostings/minecraft_auth/build/` (owner hosting).
-3. Create Mailcow mailbox `notifications@max-kuehn.com`; put its password
+3. Create Mailcow mailbox `noreply@max-kuehn.com`; put its password
    into `/opt/hostings/minecraft_auth/auth.env` (chmod 600, root-owned) —
    start from `server/auth.env.template`; set a strong FF_ADMIN_PASSWORD.
 4. Regenerate docker-compose.yaml via python3+PyYAML inserting BOTH

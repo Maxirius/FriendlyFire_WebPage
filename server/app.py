@@ -28,6 +28,7 @@ from pydantic import BaseModel
 import avatar as av
 import db as dbm
 import mailer
+import mcstatus_service as mcstatus
 import mojang
 import security as sec
 
@@ -871,6 +872,50 @@ async def sync_whitelist(request: Request, tx: DbDep):
     return JSONResponse(
         {"revision": dbm.whitelist_revision(tx), "entries": entries},
         headers={"Cache-Control": "no-store"})
+
+
+@app.get("/ping")
+async def ping():
+    """Tiny latency beacon for the in-page ping test (roundtrip timing)."""
+    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/ping/beacons")
+async def ping_beacons(user: CurrentUser):
+    """Extra latency beacons (e.g. a future direct-to-home endpoint).
+
+    Configured via FF_PING_BEACONS as a JSON array of
+    {"label": "...", "url": "https://..."}. Every beacon endpoint must
+    send CORS headers allowing this origin, since the browser times
+    cross-origin fetches against it.
+    """
+    raw = os.environ.get("FF_PING_BEACONS", "").strip()
+    beacons: list = []
+    if raw:
+        try:
+            for b in json.loads(raw):
+                beacons.append({"label": str(b.get("label") or "?"),
+                                "url": str(b.get("url") or "")})
+        except Exception:
+            log.warning("FF_PING_BEACONS unparsable, ignoring")
+    return {"relays": [{
+        "label": "Via Netcup (Relay)",
+        "url": "/ping",
+    }], "beacons": beacons}
+
+
+@app.get("/api/status/minecraft")
+async def minecraft_status(force: bool = False):
+    """Live status of the game servers (survival/creative/proxy).
+
+    Public-but-gated like the rest of the site: members only, polled by
+    the welcome page's status block. Cached briefly server-side; the
+    frontend respects nextRefreshSec.
+    """
+    data = await mcstatus.collect(force=force)
+    return JSONResponse(data, headers={
+        "Cache-Control": f"max-age={data['nextRefreshSec']}",
+    })
 
 
 # --------------------------------------------------------------------------
