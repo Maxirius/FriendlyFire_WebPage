@@ -294,27 +294,26 @@ document.addEventListener('click',ev=>{
 
 (async()=>{
   qs('#yr').textContent=new Date().getFullYear();
-  // Patient boot: the first fetch(es) after a cold navigation can hit a
-  // warming edge/gate path and return HTML; keep retrying generously
-  // instead of giving up.
+  // Calm boot: ONE quiet request, generous spacing. Bursty parallel
+  // fetches during page settle can trip edge challenges (observed as
+  // HTML-instead-of-JSON); patience beats brute-force retries.
   qs('#updatedLine').textContent='// verbinde …';
   let done=false;
-  for(let i=0;i<8 && !done;i++){
+  for(let i=0;i<4 && !done;i++){
     try{
+      await new Promise(ok=>setTimeout(ok, i===0?1500:3000*i));
       DATA=await api('GET','/api/stats/ingame');
       done=true;
       break;
     }catch(err){
       if(err&&(err.message==='anon')){return;}
-      if(i===7){
+      if(i===3){
         qs('#updatedLine').textContent='// fehler: '+err.message;
         document.getElementById('boardArea').innerHTML=
           '<div class="panel"><h2>Statistiken nicht verfügbar</h2>'+
           '<p class="desc">('+esc(err.message)+') — Seite später neu laden.</p></div>';
         return;
       }
-      qs('#updatedLine').textContent=`// verbinde … (versuch ${i+2})`;
-      await new Promise(ok=>setTimeout(ok,800+i*700));
     }
   }
   try{ paintHeader((await api('GET','/api/me')).user); }catch(_){}
