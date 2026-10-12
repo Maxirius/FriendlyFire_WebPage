@@ -944,9 +944,9 @@ async def stats_ingame(user: CurrentUser, category: str = ""):
         for p in players:
             det = p.get("detail") or {}
             entry = (det.get("stats") or {}).get(board_id)
-            if isinstance(entry, dict) and entry.get("raw") is not None:
-                rows.append((p["name"], entry["raw"], entry.get("display")
-                             or str(entry.get("raw"))))
+            if isinstance(entry, dict) and entry.get("value") is not None:
+                rows.append((p["name"], float(entry["value"]),
+                             entry.get("display") or str(entry["value"])))
         rows.sort(key=lambda r: (-r[1], r[0]))
         return [{"name": nm, "value": val, "display": disp}
                 for nm, val, disp in rows[:n]]
