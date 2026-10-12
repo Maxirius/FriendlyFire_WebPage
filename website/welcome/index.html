@@ -274,6 +274,44 @@ section.phase-strip{
 .ping-route .val.good{color:var(--accent);}
 .ping-route .val.warn{color:var(--amber);}
 
+/* ---------- Statistics ---------- */
+.stats-section{
+  border-top:1px solid var(--border);
+  padding:64px 0 80px;
+}
+.stat-figure-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:34px;
+}
+@media(max-width:860px){.stat-figure-grid{grid-template-columns:repeat(2,1fr);}}
+.figure{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:16px 18px;
+}
+.figure .num{font-size:26px;font-weight:700;color:var(--accent);
+  font-variant-numeric:tabular-nums;}
+.figure .lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted);
+  letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+.chart-frame{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:20px 22px 14px;
+}
+.chart-title{
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+}
+.legend{display:flex;gap:14px;font-family:var(--font-mono);font-size:10px;
+  color:var(--muted);}
+.legend i{display:inline-block;width:10px;height:3px;margin-right:5px;
+  vertical-align:middle;}
+.chart-svg{width:100%;height:auto;display:block;}
+.axis-label{font-family:var(--font-mono);font-size:9px;fill:var(--muted);}
+.chart-stats{
+  display:flex;gap:22px;flex-wrap:wrap;margin-top:12px;
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+}
+.chart-stats b{color:var(--ink);font-weight:600;}
+
 /* ---------- Mods ---------- */
 .mods-section{
   border-top:1px solid var(--border);
@@ -382,8 +420,8 @@ footer .tagline em{color:var(--accent);font-style:normal;}
     <nav class="links">
       <a href="#serverstatus">Status</a>
       <a href="#mods">Mods</a>
+      <a href="#statistiken-live">Statistiken</a>
       <a href="#weltkarte">Weltkarte</a>
-      <a href="#statistiken">Statistiken<span class="soon-tag">BALD</span></a>
       <a class="hide-mobile" href="/dashboard.html" id="navDash" style="display:none">Mein Konto</a>
       <a href="/login" id="navLogin">Login</a>
       <a class="btn-discord hide-mobile" href="#">Discord</a><!-- invite link follows -->
@@ -471,10 +509,12 @@ footer .tagline em{color:var(--accent);font-style:normal;}
         <p>Unsere Welt wird fortlaufend kartografiert und live von unserer Infrastruktur gestreamt — volle Geschwindigkeit für jeden Besucher.</p>
         <span class="now">LIVE</span>
       </article>
-      <article class="phase" id="statistiken">
+      <article class="phase active" id="statistiken">
         <span class="phase-num">PHASE 03</span>
         <h3>Statistiken</h3>
-        <p>Spielzeiten, Fortschritte und Server-Kennzahlen, übersichtlich aufbereitet.</p>
+        <p>Kennzahlen der Community und Spieleraktivität, live aus unserer
+          Infrastruktur.</p>
+        <span class="now">LIVE</span>
       </article>
       <article class="phase active" id="login">
         <span class="phase-num">PHASE 04</span>
@@ -511,6 +551,29 @@ footer .tagline em{color:var(--accent);font-style:normal;}
     <div id="modShowcase"><!-- populated by script --></div>
     <p class="mods-footnote" id="modsFootnote">// liste wird aus der
       server-checkliste generiert · stand dynamisch</p>
+  </section>
+
+  <!-- STATISTICS -->
+  <section class="stats-section" id="statistiken-live">
+    <div class="section-head">
+      <h2>Statistiken</h2>
+      <span>community &amp; spieleraktivität</span>
+    </div>
+    <div class="stat-figure-grid" id="statFigures"></div>
+    <div class="chart-frame">
+      <div class="chart-title">
+        <span>Spieleraktivität · letzte 24 h</span>
+        <span class="legend" id="chartLegend">
+          <span><i style="background:#77cf52"></i>Netzwerk</span>
+          <span><i style="background:#ffc35c"></i>Survival</span>
+          <span><i style="background:#7ab3e8"></i>Creative</span>
+        </span>
+      </div>
+      <svg class="chart-svg" id="activityChart" viewBox="0 0 720 180"
+           preserveAspectRatio="none" role="img"
+           aria-label="Spieleraktivitäts-Graph der letzten 24 Stunden"></svg>
+      <div class="chart-stats" id="chartStats"></div>
+    </div>
   </section>
 
   <!-- WORLD MAP -->
@@ -766,6 +829,96 @@ ${cat.mods.map(m=>`
     }catch(_){
       host.innerHTML='<p class="mod-tip">Modliste momentan nicht ladbar.</p>';
     }
+  })();
+
+  // ----- statistics section -----
+  (async()=>{
+    const figs=document.getElementById('statFigures');
+    const svg=document.getElementById('activityChart');
+    const cs=document.getElementById('chartStats');
+    async function loadStats(){
+      try{
+        const d=await (await fetch('/api/stats/community',{credentials:'same-origin'})).json();
+        const cm=d.community, ac=d.activity;
+
+        const figureDefs=[
+          [cm.membersActive,'Mitglieder'],
+          [cm.whitelistedPlayers,'Whitelisted'],
+          [cm.joinedLastWeek,'Neu (7 Tage)'],
+          [ac.peaks.network,'Peak 24 h'],
+          [Math.round(ac.averages.network*10)/10,'Ø Spieler 24 h'],
+        ];
+        figs.innerHTML=figureDefs.map(([v,l])=>`
+<div class="figure"><div class="num">${esc(v)}</div><div class="lbl">${esc(l)}</div></div>`).join('');
+
+        drawChart(ac.series);
+
+        cs.innerHTML=
+          `<span>peak: <b>S ${ac.peaks.survival}</b> · <b>C ${ac.peaks.creative}</b> · <b>N ${ac.peaks.network}</b></span>`+
+          `<span>ø 24h: <b>S ${ac.averages.survival}</b> · <b>C ${ac.averages.creative}</b> · <b>N ${ac.averages.network}</b></span>`+
+          `<span>samples: <b>${ac.coverageSamples}</b></span>`;
+        setTimeout(loadStats,120000);
+      }catch(_){
+        figs.innerHTML='<div class="figure"><div class="num">–</div>'+
+          '<div class="lbl">statistiken momentan nicht verfügbar</div></div>';
+        setTimeout(loadStats,120000);
+      }
+    }
+
+    function drawChart(series){
+      const NS='http://www.w3.org/2000/svg';
+      const W=720,H=180,PAD_B=20,PAD_T=10;
+      svg.innerHTML='';
+      if(!series.length){
+        const t=document.createElementNS(NS,'text');
+        t.setAttribute('x',W/2);t.setAttribute('y',H/2);
+        t.setAttribute('fill','var(--muted)');
+        t.setAttribute('font-family','var(--font-mono)');
+        t.setAttribute('font-size','12');
+        t.textContent='// noch keine daten — sampler sammelt seit start (5-min-raster)';
+        t.setAttribute('text-anchor','middle');
+        svg.appendChild(t);return;
+      }
+      const maxY=Math.max(1,...series.flatMap(p=>[p.survival,p.creative,p.network]))*1.15;
+      const x0=series[0].ts,x1=series[series.length-1].ts;
+      const xs=ts=>((ts-x0)/(Math.max(1,x1-x0)))*(W-40)+30;
+      const ys=v=>H-PAD_B-(v/maxY)*(H-PAD_B-PAD_T);
+      // horizontal gridlines (3)
+      for(let i=1;i<=3;i++){
+        const yy=PAD_T+(H-PAD_B-PAD_T)*(i/4);
+        const gl=document.createElementNS(NS,'line');
+        gl.setAttribute('x1',30);gl.setAttribute('x2',W-10);
+        gl.setAttribute('y1',yy);gl.setAttribute('y2',yy);
+        gl.setAttribute('stroke','var(--border)');gl.setAttribute('stroke-width','1');
+        svg.appendChild(gl);
+        const lb=document.createElementNS(NS,'text');
+        lb.setAttribute('x',4);lb.setAttribute('y',yy+3);
+        lb.setAttribute('class','axis-label');
+        lb.textContent=Math.round(maxY*(1-i/4));
+        svg.appendChild(lb);
+      }
+      const colors={network:'#77cf52',survival:'#ffc35c',creative:'#7ab3e8'};
+      for(const key of ['network','survival','creative']){
+        const poly=document.createElementNS(NS,'polyline');
+        poly.setAttribute('points',series.map(p=>`${xs(p.ts)},${ys(p[key])}`).join(' '));
+        poly.setAttribute('fill','none');
+        poly.setAttribute('stroke',colors[key]);
+        poly.setAttribute('stroke-width','2');
+        svg.appendChild(poly);
+      }
+      // x labels: first + last timestamps
+      const fmt=ts=>new Date(ts*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+      const xl1=document.createElementNS(NS,'text');
+      xl1.setAttribute('x',30);xl1.setAttribute('y',H-6);
+      xl1.setAttribute('class','axis-label');xl1.textContent=fmt(x0);
+      svg.appendChild(xl1);
+      const xl2=document.createElementNS(NS,'text');
+      xl2.setAttribute('x',W-10);xl2.setAttribute('y',H-6);
+      xl2.setAttribute('class','axis-label');xl2.setAttribute('text-anchor','end');
+      xl2.textContent=fmt(x1);
+      svg.appendChild(xl2);
+    }
+    loadStats();
   })();
 
   refresh();

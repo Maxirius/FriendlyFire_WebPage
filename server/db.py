@@ -78,7 +78,18 @@ CREATE TABLE IF NOT EXISTS audit (
   detail     TEXT,
   ip         TEXT
 );
+
+CREATE TABLE IF NOT EXISTS activity_samples (
+  ts           REAL PRIMARY KEY,      -- epoch, bucket-aligned
+  players_survival INTEGER NOT NULL,
+  players_creative INTEGER NOT NULL,
+  players_network  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_activity_ts ON activity_samples(ts);
 """
+
+SAMPLE_INTERVAL_S = 300          # 5-minute buckets
+SAMPLE_RETENTION_S = 14 * 86400  # two weeks of history
 
 
 def now() -> float:

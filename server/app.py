@@ -31,6 +31,7 @@ import mailer
 import mcstatus_service as mcstatus
 import mojang
 import security as sec
+import activity
 
 logging.basicConfig(level=os.environ.get("FF_LOG_LEVEL", "INFO"),
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -227,7 +228,9 @@ async def lifespan(app: FastAPI):
         tx.commit()
     finally:
         conn.close()
+    activity.start_sampler()
     yield
+    activity.stop_sampler()
     global _shared_http
     if _shared_http and not _shared_http.is_closed:
         await _shared_http.aclose()
@@ -917,6 +920,17 @@ async def ping_beacons(user: CurrentUser):
         "label": "Via Netcup (Relay)",
         "url": "/ping",
     }], "beacons": beacons}
+
+
+@app.get("/api/stats/community")
+async def stats_community(user: CurrentUser, tx: DbDep,
+                          hours: int = 24):
+    """Aggregated statistics for the welcome page's statistics section."""
+    hours = max(1, min(hours, 24 * 14))
+    acts = await activity.activity_series(hours=hours)
+    return JSONResponse(
+        {"community": activity.community_counts(tx), "activity": acts},
+        headers={"Cache-Control": "60"})
 
 
 @app.get("/api/status/minecraft")
