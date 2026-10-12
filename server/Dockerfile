@@ -14,7 +14,7 @@ RUN apt-get update \
  && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
 
-COPY app.py db.py security.py mojang.py mailer.py avatar.py mcstatus_service.py activity.py ./
+COPY app.py db.py security.py mojang.py mailer.py avatar.py mcstatus_service.py activity.py stats_ingest.py ./
 
 # Non-root runtime; DB lives in mounted volume /data
 RUN useradd --system --uid 850 --create-home ffauth \

@@ -32,6 +32,7 @@ import mcstatus_service as mcstatus
 import mojang
 import security as sec
 import activity
+import stats_ingest
 
 logging.basicConfig(level=os.environ.get("FF_LOG_LEVEL", "INFO"),
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -229,7 +230,9 @@ async def lifespan(app: FastAPI):
     finally:
         conn.close()
     activity.start_sampler()
+    stats_ingest.start_ingest()
     yield
+    stats_ingest.stop_ingest()
     activity.stop_sampler()
     global _shared_http
     if _shared_http and not _shared_http.is_closed:
@@ -920,6 +923,57 @@ async def ping_beacons(user: CurrentUser):
         "label": "Via Netcup (Relay)",
         "url": "/ping",
     }], "beacons": beacons}
+
+
+@app.get("/api/stats/ingame")
+async def stats_ingame(user: CurrentUser):
+    """Ingame statistics from the RS archive (fed by the StatsWebUI pull).
+
+    Presented WITHOUT any ranking overlay: neutral best-lists computed
+    from raw cumulative counters, player profiles with avatars.
+    """
+    players = stats_ingest.archived_players()
+    # Neutral leaderboards derived from raw fields.
+    def board(key_fn, n=10):
+        rows = [(p["name"], key_fn(p)) for p in players]
+        rows = [r for r in rows if r[1]]
+        rows.sort(key=lambda r: (-r[1], r[0]))
+        return [{"name": nm, "value": val} for nm, val in rows[:n]]
+
+    play_board = board(lambda p: round(float(p["playHours"]), 2))
+    adv_board = board(lambda p: int(p["advancementsDone"]))
+    # Richer boards come from raw stats if present (killed_by, mined...)
+    mined_totals = {}
+    death_totals = {}
+    kill_totals = {}
+    for p in players:
+        raw = p.get("raw") or {}
+        stats = raw.get("stats") or {}
+        for blk, v in (stats.get("minecraft:mined") or {}).items():
+            mined_totals[p["name"]] = mined_totals.get(p["name"], 0) + int(v)
+        for mob, v in (stats.get("minecraft:killed_by") or {}).items():
+            death_totals[mob] = death_totals.get(mob, 0) + int(v)
+        for mob, v in (stats.get("minecraft:killed") or {}).items():
+            kill_totals[p["name"]] = kill_totals.get(p["name"], 0) + int(v)
+    def dict_top(d, n=8):
+        rows = sorted(d.items(), key=lambda kv: (-kv[1], kv[0]))[:n]
+        return [{"key": k.replace("minecraft:", ""), "value": v} for k, v in rows]
+
+    return JSONResponse({
+        "players": players,
+        "boards": {
+            "playtime": play_board,
+            "advancements": adv_board,
+            "blocksMined": [{"name": k, "value": v} for k, v in
+                            sorted(mined_totals.items(),
+                                   key=lambda kv: -kv[1])[:10]],
+            "mobKills": [{"name": k, "value": v} for k, v in
+                         sorted(kill_totals.items(),
+                                key=lambda kv: -kv[1])[:10]],
+        },
+        "deathCauses": dict_top(death_totals),
+        "archive": stats_ingest.archive_health(),
+    }, headers={"Cache-Control": "120"})
 
 
 @app.get("/api/stats/community")

@@ -358,6 +358,48 @@ section.phase-strip{
   color:var(--muted);
 }
 
+/* ---------- Ingame stats ---------- */
+.board-cols{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:14px;margin-top:30px;
+}
+.board{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:16px 18px;
+}
+.board h4{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  color:var(--muted);letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:12px;
+}
+.board ol{list-style:none;}
+.board li{
+  display:flex;align-items:center;gap:10px;padding:6px 0;
+  border-bottom:1px solid var(--border);font-size:13.5px;
+}
+.board li:last-child{border-bottom:none;}
+.board .rk{font-family:var(--font-mono);font-size:10px;color:var(--muted);
+  width:22px;flex:none;}
+.board .nm{flex:1;display:flex;align-items:center;gap:8px;min-width:0;}
+.board .nm img{width:20px;height:20px;image-rendering:pixelated;
+  background:#0b0e12;flex:none;}
+.board .vl{font-family:var(--font-mono);font-size:12px;color:var(--accent);
+  font-variant-numeric:tabular-nums;flex:none;}
+.board .empty{color:var(--muted);font-size:13px;}
+.profile-tiles{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:14px;margin-top:30px;
+}
+.ptile{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:16px 18px;display:flex;gap:14px;align-items:center;
+}
+.ptile img.av{width:44px;height:44px;image-rendering:pixelated;
+  background:#0b0e12;border:1px solid var(--border);}
+.ptile .pname{font-weight:700;font-size:15px;}
+.ptile .pmeta{font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  margin-top:2px;}
+
 /* ---------- World map ---------- */
 .map-section{
   border-top:1px solid var(--border);
@@ -574,6 +616,9 @@ footer .tagline em{color:var(--accent);font-style:normal;}
            aria-label="Spieleraktivitäts-Graph der letzten 24 Stunden"></svg>
       <div class="chart-stats" id="chartStats"></div>
     </div>
+
+    <div class="board-cols" id="ingameBoards"></div>
+    <div class="profile-tiles" id="profileTiles"></div>
   </section>
 
   <!-- WORLD MAP -->
@@ -864,6 +909,48 @@ ${cat.mods.map(m=>`
         setTimeout(loadStats,120000);
       }
     }
+
+    // ---- ingame boards (neutral, no ranking overlay) ----
+    async function loadIngame(){
+      const bc=document.getElementById('ingameBoards');
+      const pt=document.getElementById('profileTiles');
+      try{
+        const d=await (await fetch('/api/stats/ingame',{credentials:'same-origin'})).json();
+        const boards=[
+          ['Spielzeit (h)', d.boards.playtime],
+          ['Advancements', d.boards.advancements],
+          ['Blöcke abgebaut', d.boards.blocksMined.map(b=>({name:b.key,value:b.value}))],
+          ['Mob-Kills', d.boards.mobKills.map(b=>({name:b.key,value:b.value}))],
+        ];
+        bc.innerHTML=boards.map(([title,rows])=>`
+<section class="board">
+  <h4>${esc(title)}</h4>
+  ${rows.length?`<ol>${rows.map((r,i)=>`
+    <li>
+      <span class="rk">${i+1}</span>
+      <span class="nm"><img src="/avatar/${encodeURIComponent(r.name)}.png" alt="">${esc(r.name)}</span>
+      <span class="vl">${esc(r.value)}</span>
+    </li>`).join('')}</ol>`
+  :'<p class="empty">noch keine daten</p>'}
+</section>`).join('');
+
+        pt.innerHTML=(d.players||[]).map(p=>`
+<a class="ptile" href="#" onclick="return false;">
+  <img class="av" src="/avatar/${encodeURIComponent(p.name)}.png" alt="">
+  <div>
+    <div class="pname">${esc(p.name)}</div>
+    <div class="pmeta">${esc(Math.round(p.playHours*100)/100)} h · `+
+      `${esc(p.advancementsDone)}/${esc(p.advancementsTotal)} fortschritte</div>
+  </div>
+</a>`).join('');
+        setTimeout(loadIngame,120000);
+      }catch(_){
+        bc.innerHTML='<section class="board"><h4>Ingame-Statistiken</h4>'+
+          '<p class="empty">momentan nicht verfügbar</p></section>';
+        setTimeout(loadIngame,120000);
+      }
+    }
+    loadIngame();
 
     function drawChart(series){
       const NS='http://www.w3.org/2000/svg';
