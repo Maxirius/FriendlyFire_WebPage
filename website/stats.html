@@ -172,10 +172,22 @@ let DATA=null;
 let ACTIVE_CAT=null;
 
 async function api(path){
-  const r=await fetch(path,{credentials:'same-origin'});
-  if(r.status===401){location.href='/login';throw new Error('anon');}
-  if(!r.ok) throw new Error('http-'+r.status);   // caller decides UX
-  return r.json();
+  // redirect:'manual' stops a transient nginx gate bounce from turning
+  // into an HTML-vs-JSON parse explosion; retried once below.
+  for(let attempt=0;attempt<2;attempt++){
+    const r=await fetch(path,{credentials:'same-origin',redirect:'manual'});
+    if(r.status===401){location.href='/login';throw new Error('anon');}
+    if(r.status===0){                    // manual-redirect marker: gate bounce
+      if(attempt===0){await new Promise(res=>setTimeout(res,600));continue;}
+      location.href='/login';throw new Error('anon');
+    }
+    if(!r.ok) throw new Error('http-'+r.status);
+    try{return await r.json();}
+    catch(parseErr){
+      if(attempt===0){await new Promise(res=>setTimeout(res,600));continue;}
+      throw new Error('bad-json');
+    }
+  }
 }
 
 function paintHeader(me){
