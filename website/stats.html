@@ -279,6 +279,9 @@ document.addEventListener('click',ev=>{
 (async()=>{
   qs('#yr').textContent=new Date().getFullYear();
   qs('#updatedLine').textContent='// boot...';
+  // Let the navigating request (auth gate) settle before the first API
+  // call — eliminates a cold-load race observed with the edge.
+  await new Promise(ok=>setTimeout(ok,300));
   // Simple sequential boot: data first, retries on transients, honest
   // inline error otherwise. A 401 alone redirects to /login.
   for(let i=0;i<3;i++){
