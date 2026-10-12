@@ -905,12 +905,12 @@ async def ping_beacons(user: CurrentUser):
 
 
 @app.get("/api/status/minecraft")
-async def minecraft_status(force: bool = False):
-    """Live status of the game servers (survival/creative/proxy).
+async def minecraft_status(user: CurrentUser, force: bool = False):
+    """Live status of the game servers (survival/creative/network).
 
-    Public-but-gated like the rest of the site: members only, polled by
-    the welcome page's status block. Cached briefly server-side; the
-    frontend respects nextRefreshSec.
+    Members-only (matches the rest of the site; the /api/ nginx location
+    has no auth_request, so the guard lives here). Polled by the welcome
+    page's status block; cached briefly server-side.
     """
     data = await mcstatus.collect(force=force)
     return JSONResponse(data, headers={
