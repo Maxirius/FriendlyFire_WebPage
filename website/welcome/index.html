@@ -182,7 +182,7 @@ section.phase-strip{
   padding:2px 7px;margin-top:12px;font-weight:600;
 }
 
-/* ---------- Server status ---------- */
+/* ---------- Server status (topology: network pill above worlds) ---------- */
 .status-section{
   border-top:1px solid var(--border);
   padding:64px 0 80px;
@@ -191,11 +191,30 @@ section.phase-strip{
   margin-top:-24px;margin-bottom:36px;
   font-family:var(--font-mono);font-size:11px;color:var(--muted);
 }
+.topology{position:relative;}
+.flow-lines{
+  position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:0;
+}
+.flow-lines path{
+  fill:none;stroke:var(--muted);stroke-width:1.5;opacity:.5;
+}
+.flow-lines polygon.head{fill:var(--accent);opacity:.85;}
+@media(prefers-reduced-motion:no-preference){
+  .flow-lines path.live{
+    stroke-dasharray:4 7;
+    animation:flowdash 1.5s linear infinite;
+  }
+  @keyframes flowdash{to{stroke-dashoffset:-11;}}
+}
 .status-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:16px;
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:16px;margin-top:40px;
 }
 @media(max-width:860px){
   .status-grid{grid-template-columns:1fr;}
+  .flow-lines{display:none;}
 }
 .mc-card{
   border:1px solid var(--border);background:var(--panel-2);
@@ -212,6 +231,12 @@ section.phase-strip{
   font-family:var(--font-mono);font-size:11px;font-weight:600;
   color:var(--muted);letter-spacing:.08em;text-transform:uppercase;
   margin-bottom:14px;
+  display:flex;align-items:center;gap:9px;
+}
+.card-icon{
+  width:26px;height:26px;flex:none;
+  image-rendering:pixelated;background:#0b0e12;
+  border:1px solid var(--border);padding:2px;
 }
 .mc-card .big{
   font-size:30px;font-weight:700;line-height:1.1;
@@ -231,9 +256,15 @@ section.phase-strip{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .net-bar{
-  margin-top:16px;border:1px solid var(--border);background:var(--panel);
+  position:relative;z-index:1;
+  border:1px solid var(--border);background:var(--panel);
   padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
   font-family:var(--font-mono);font-size:12px;color:var(--muted);
+}
+.net-icon{
+  width:24px;height:24px;flex:none;
+  image-rendering:pixelated;background:#0b0e12;
+  border:1px solid var(--border);padding:2px;
 }
 .net-bar .lamp{
   flex:none;width:10px;height:10px;display:inline-block;
@@ -575,8 +606,11 @@ footer .tagline em{color:var(--accent);font-style:normal;}
       <span>live aus unserem Netz</span>
     </div>
     <p class="status-meta" id="statusMeta">// verbinde …</p>
-    <div class="status-grid" id="statusGrid"></div>
-    <div class="net-bar" id="netBar"></div>
+    <div class="topology" id="topologyWrap">
+      <svg class="flow-lines" id="flowLines" aria-hidden="true"></svg>
+      <div class="net-bar topology-head" id="netBar"></div>
+      <div class="status-grid" id="statusGrid"></div>
+    </div>
     <div class="ping-widget" id="pingWidget">
       <button class="ping-btn" id="pingBtn" type="button">Ping-Test starten</button>
       <span class="ping-hint" id="pingHint">misst deine Latenz zu den Spielservern</span>
@@ -665,6 +699,13 @@ document.getElementById('year').textContent = new Date().getFullYear();
          : state==='stopped' ? 'GESTOPPT' : 'OFFLINE';
   }
 
+  // Vanilla item icons per surface (server-side extracted PNGs).
+  const CARD_ICONS = {
+    survival:'/assets/icons/diamond_pickaxe.png',
+    creative:'/assets/icons/painting.png',
+    network: '/assets/icons/compass.png',
+  };
+
   function cardHtml(sv){
     let big;
     if(sv.state==='online'){
@@ -677,10 +718,11 @@ document.getElementById('year').textContent = new Date().getFullYear();
     const subs=[];
     if(sv.playerNames?.length) subs.push(esc(sv.playerNames.slice(0,6).join(', ')));
     if(sv.version) subs.push(esc(sv.version));
+    const ic=CARD_ICONS[sv.id]||CARD_ICONS.survival;
     return `
-<article class="mc-card state-${esc(sv.state)}">
+<article class="mc-card state-${esc(sv.state)}" data-world="${esc(sv.id)}">
   <span class="lamp ${lampCls(sv.state)}"></span>
-  <h3>${esc(sv.label)}</h3>
+  <h3><img class="card-icon" src="${ic}" alt="" draggable="false">${esc(sv.label)}</h3>
   <div class="big">${big}</div>
   <span class="state-word">${stateWord(sv.state)}</span>
   <div class="sub">${subs.length?('// '+subs.join(' · ')):''}</div>
@@ -700,10 +742,45 @@ document.getElementById('year').textContent = new Date().getFullYear();
     return `
 <div class="net-bar-inner state-${esc(net.state)}">
   <span class="lamp ${lampCls(net.state)}"></span>
+  <img class="net-icon" src="${CARD_ICONS.network}" alt="" draggable="false">
   <span>NETZWERK&nbsp;<small>// spieler-eingang (haustür)</small></span>
   <span>${subs.join('&nbsp;&nbsp;·&nbsp;&nbsp;')}</span>
 </div>`;
   }
+
+  // Draw elbow connectors from the network pill bottom-edge to each world
+  // card's top-center. Geometry-relative, redrawn on resize/reflow.
+  function drawFlow(){
+    const svg=document.getElementById('flowLines');
+    const head=document.querySelector('#netBar .net-bar-inner');
+    const wrap=document.getElementById('topologyWrap');
+    if(!svg||!head||!wrap) return;
+    const wb=wrap.getBoundingClientRect();
+    const hb=head.getBoundingClientRect();
+    const startX=hb.left+hb.width/2-wb.left;
+    const startY=hb.bottom-wb.top;
+    let html='', live=false;
+    wrap.querySelectorAll('.mc-card[data-world]').forEach(card=>{
+      const cb=card.getBoundingClientRect();
+      const cx=cb.left+cb.width/2-wb.left;
+      const cy=cb.top-wb.top;
+      const midY=startY+(cy-startY)*0.5;
+      const d=`M ${startX} ${startY} L ${startX} ${midY} L ${cx} ${midY} L ${cx} ${cy}`;
+      const cls=card.classList.contains('state-online')?'live':'';
+      if(cls) live=true;
+      html+=`<path d="${d}" class="${cls}"/>`;
+      // arrowhead pointing into the card top
+      html+=`<polygon class="head" points="${cx-4},${cy-7} ${cx+4},${cy-7} ${cx},${cy}"/>`;
+    });
+    svg.setAttribute('viewBox',`0 0 ${wb.width} ${wb.height}`);
+    svg.innerHTML=html;
+    void svg.offsetWidth; // restart dash animation cleanly on redraw
+  }
+  window.addEventListener('resize',drawFlow);
+  if(window.ResizeObserver){
+    new ResizeObserver(drawFlow).observe(document.getElementById('topologyWrap'));
+  }
+  document.fonts?.ready.then(drawFlow);
 
   function stamp(iso){
     try{
@@ -720,6 +797,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
       const nets =data.servers.filter(s=>s.kind==='network');
       grid.innerHTML = worlds.map(cardHtml).join('');
       netBar.innerHTML = nets.map(netBarHtml).join('');
+      drawFlow();
       meta.textContent = stamp(data.checkedAt) +
         ' · auto-refresh alle '+(data.nextRefreshSec)+' s';
       setTimeout(refresh,(data.nextRefreshSec||20)*1000+500);
