@@ -896,9 +896,21 @@ async def sync_whitelist(request: Request, tx: DbDep):
 
 
 @app.get("/ping")
-async def ping():
-    """Tiny latency beacon for the in-page ping test (roundtrip timing)."""
-    return Response(status_code=204, headers={"Cache-Control": "no-store"})
+async def ping(request: Request):
+    """Tiny latency beacon for the in-page ping test (roundtrip timing).
+
+    Echoes CORS headers for trusted origins so the page can also time a
+    direct-to-RS beacon hostname (DNS-only, no Cloudflare in the path —
+    mirroring the real client route onto port 25565).
+    """
+    headers = {"Cache-Control": "no-store"}
+    origin = request.headers.get("origin", "")
+    if origin and origin.lower() in TRUSTED_ORIGINS:
+        headers.update({
+            "Access-Control-Allow-Origin": origin,
+            "Vary": "Origin",
+        })
+    return Response(status_code=204, headers=headers)
 
 
 @app.get("/api/ping/beacons")
@@ -919,10 +931,25 @@ async def ping_beacons(user: CurrentUser):
                                 "url": str(b.get("url") or "")})
         except Exception:
             log.warning("FF_PING_BEACONS unparsable, ignoring")
+
+    # Measured tunnel leg (RS -> game VM via WireGuard) feeds the page's
+    # route estimate. Taken from the cached status collector so no extra
+    # probes fire; the minimum across reachable entries approximates the
+    # tunnel RTT floor. Falls back to the page's fixed assumption (60 ms)
+    # when nothing is reachable yet.
+    tunnel_ms = None
+    try:
+        data = await mcstatus.collect()
+        legs = [s["latencyMs"] for s in data.get("servers", [])
+                if isinstance(s.get("latencyMs"), (int, float))]
+        if legs:
+            tunnel_ms = round(min(legs))
+    except Exception:
+        log.warning("tunnel latency unavailable for ping estimate")
     return {"relays": [{
         "label": "Via Netcup (Relay)",
         "url": "/ping",
-    }], "beacons": beacons}
+    }], "beacons": beacons, "estimate": {"measuredTunnelMs": tunnel_ms}}
 
 
 @app.get("/api/stats/ingame")
@@ -936,7 +963,8 @@ async def stats_ingame(user: CurrentUser, category: str = ""):
     players = stats_ingest.archived_players()
     boards_registry = await _statswebui_boards()
     wanted = [c for c in boards_registry
-              if not category or c["id"] == category]
+              if c.get("id") != "crowns"   # scoring overlays stay out
+              and (not category or c["id"] == category)]
 
     def board_rank(board_id: str, n: int = 10) -> list:
         """Neutral descending list over all players for one board."""
@@ -993,11 +1021,154 @@ async def _statswebui_boards() -> list:
         cli = await stats_ingest._client()
         r = await cli.get(f"{stats_ingest._source_base()}/api/leaderboards")
         if r.status_code == 200:
-            _LEADERBOARD_META = r.json().get("categories", [])
-            return _LEADERBOARD_META
+            meta = r.json().get("categories", [])
+            if meta:
+                _LEADERBOARD_META = meta
+                return meta
     except Exception:
         log.warning("could not fetch StatsWebUI board registry")
-    return []
+    return _fallback_boards()
+
+
+# Static board catalogue mirroring the mod's registry. Used when the mod
+# is unreachable (paused instance) so the stats page never goes blank.
+_FALLBACK_ICONS = {
+    "__cat_advancements": "minecraft:enchanted_book",
+    "__cat_life": "minecraft:experience_bottle",
+    "__cat_exploration": "minecraft:compass",
+    "__cat_mining": "minecraft:diamond_pickaxe",
+    "__cat_deaths": "minecraft:skeleton_skull",
+    "__cat_combat": "minecraft:iron_sword",
+    "__cat_misc": "minecraft:name_tag",
+    "advancements": "minecraft:enchanted_book", "play-time": "minecraft:clock",
+    "animals-bred": "minecraft:wheat", "fish-caught": "minecraft:fishing_rod",
+    "villager-trades": "minecraft:emerald", "items-enchanted": "minecraft:enchanted_book",
+    "sleeps": "minecraft:red_bed", "jumps": "minecraft:rabbit_foot",
+    "distance-total": "minecraft:compass", "distance-walk-sprint": "minecraft:sugar",
+    "distance-walk": "minecraft:leather_boots", "distance-sprint": "minecraft:sugar",
+    "distance-swim": "minecraft:heart_of_the_sea", "distance-boat": "minecraft:oak_boat",
+    "distance-elytra": "minecraft:elytra", "distance-horse": "minecraft:saddle",
+    "distance-happy-ghast": "minecraft:happy_ghast_spawn_egg",
+    "distance-nautilus": "minecraft:nautilus_shell", "distance-minecart": "minecraft:minecart",
+    "distance-strider": "minecraft:warped_fungus_on_a_stick",
+    "chests-opened": "minecraft:compass", "blocks-mined": "minecraft:diamond_pickaxe",
+    "ores": "minecraft:iron_ore", "diamonds-mined": "minecraft:diamond",
+    "iron-mined": "minecraft:iron_ingot", "ancient-debris": "minecraft:ancient_debris",
+    "logs-mined": "minecraft:oak_log", "sculk-mined": "minecraft:sculk",
+    "tools-broken": "minecraft:flint", "deaths": "minecraft:skeleton_skull",
+    "killed-by-zombie": "minecraft:zombie_head", "killed-by-creeper": "minecraft:creeper_head",
+    "killed-by-skeleton": "minecraft:skeleton_skull", "killed-by-warden": "minecraft:echo_shard",
+    "hostile-kills": "minecraft:iron_sword", "farm-kills": "minecraft:cooked_chicken",
+    "zombies": "minecraft:zombie_head", "skeletons": "minecraft:skeleton_skull",
+    "creepers": "minecraft:creeper_head", "endermen": "minecraft:ender_pearl",
+    "blazes": "minecraft:blaze_rod", "wither-skeletons": "minecraft:wither_skeleton_skull",
+    "ender-dragon": "minecraft:dragon_egg", "wither": "minecraft:nether_star",
+    "warden": "minecraft:echo_shard", "elder-guardian": "minecraft:elder_guardian_spawn_egg",
+    "bosses": "minecraft:nether_star", "raids-won": "minecraft:emerald",
+    "player-kills": "minecraft:diamond_sword", "damage-dealt": "minecraft:iron_sword",
+    "kills-per-hour": "minecraft:iron_sword",
+}
+
+
+def _fallback_boards() -> list:
+    """Deterministic catalogue derived from the archived player details."""
+    players = stats_ingest.archived_players(limit=1)
+    cats: dict[str, list] = {}
+    units: dict[tuple[str, str], tuple[str, bool]] = {}
+    lower_win_ids = {"deaths", "killed-by-zombie", "killed-by-creeper",
+                     "killed-by-skeleton", "killed-by-warden"}
+    for p in players:
+        det = p.get("detail") or {}
+        for bid, entry in (det.get("stats") or {}).items():
+            cat = entry.get("category") or "misc"
+            if cat == "crowns":
+                continue  # mod scoring overlays stay out (design rule)
+            unit = entry.get("unit") or ""
+            units[(bid, cat)] = (unit, bid in lower_win_ids)
+            cats.setdefault(cat, []).append(bid)
+    out = []
+    for cid, bids in cats.items():
+        out.append({
+            "id": cid,
+            "icon": _FALLBACK_ICONS.get("__cat_" + cid,
+                                        _FALLBACK_ICONS.get(cid)),
+            "boards": [{
+                "id": bid,
+                "unit": units.get((bid, cid), ("", False))[0],
+                "icon": _FALLBACK_ICONS.get(bid),
+                "lowerWins": units.get((bid, cid), ("", False))[1],
+                "listed": True,
+            } for bid in sorted(set(bids))],
+        })
+    return out
+
+
+@app.get("/api/stats/player/{name}")
+async def stats_player(name: str, user: CurrentUser):
+    """Full stats profile for one player, trimmed for transport.
+
+    Deep vanilla sections (mined/crafted/killed/...) keep only nonzero
+    entries — zeros dominate the raw arrays (~1600 items each).
+    """
+    players = stats_ingest.archived_players(limit=500)
+    for p in players:
+        if p["name"].lower() == name.lower():
+            det = p.get("detail") or {}
+            vanilla = det.get("vanilla") or {}
+
+            def trim(section: list) -> list:
+                return [
+                    {"id": e.get("id"),
+                     "value": e.get("value"),
+                     "display": e.get("display")}
+                    for e in section
+                    if isinstance(e, dict) and (e.get("value") or 0) != 0
+                ]
+
+            deep = {k: trim(v) for k, v in vanilla.items()
+                    if isinstance(v, list)}
+            stats_neutral = {
+                bid: entry for bid, entry in (det.get("stats") or {}).items()
+                if (entry or {}).get("category") != "crowns"
+            }
+            return JSONResponse({
+                "name": p["name"], "uuid": p["uuid"],
+                "playHours": p["playHours"],
+                "advancementsDone": p["advancementsDone"],
+                "advancementsTotal": p["advancementsTotal"],
+                "advancementIds": ((det.get("advancements") or {}).get("ids")),
+                "stats": stats_neutral,
+                "deep": deep,
+                "fetchedAt": p["fetchedAt"],
+            })
+    raise HTTPException(status_code=404, detail="player not found")
+
+
+@app.get("/api/stats/compare")
+async def stats_compare(a: str, b: str, user: CurrentUser):
+    """Side-by-side comparison of two archived players."""
+    async def one(nm: str) -> Optional[dict]:
+        for p in stats_ingest.archived_players(limit=500):
+            if p["name"].lower() == nm.lower():
+                return p
+        return None
+
+    pa, pb = await one(a), await one(b)
+    if not pa or not pb:
+        raise HTTPException(status_code=404, detail="player(s) not found")
+
+    def slim(p: dict) -> dict:
+        det = p.get("detail") or {}
+        return {
+            "name": p["name"], "uuid": p["uuid"],
+            "playHours": p["playHours"],
+            "advancementsDone": p["advancementsDone"],
+            "advancementsTotal": p["advancementsTotal"],
+            "stats": {bid: e for bid, e in (det.get("stats") or {}).items()
+                      if (e or {}).get("category") != "crowns"},
+        }
+
+    return JSONResponse({"a": slim(pa), "b": slim(pb)})
 
 
 @app.get("/api/stats/community")

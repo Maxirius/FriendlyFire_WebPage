@@ -815,21 +815,35 @@ document.getElementById('year').textContent = new Date().getFullYear();
         const ms=await measureMedian(rt.url);
         return {label:rt.label,ms,type:rt.type,url:rt.url};
       }));
-      // relay cell carries the estimate toward the game servers
+      // Estimate toward the game servers: prefer the direct-to-RS beacon
+      // (mirrors the client route without Cloudflare), fall back to the
+      // relay measurement; tunnel leg measured when the collector has one.
       const relayCell=cells.find(c=>c.type==='relay'&&c.ms!=null);
+      const directCell=cells.find(c=>c.type==='beacon'&&c.ms!=null);
+      const estSrc=directCell||relayCell;
+      const tunnelEst=cfg.estimate&&typeof cfg.estimate.measuredTunnelMs==='number'
+        ? cfg.estimate.measuredTunnelMs : null;
+      const estBase=tunnelEst!=null?tunnelEst:60;
+      const estLbl=directCell
+        ?'Schätzung → Spiele-Server<br>(direkt zum RS + Tunnel)'
+        :'Schätzung → Spiele-Server<br>(via Relay + Tunnel)';
       pingResults.innerHTML = cells.map(c=>`
 <div class="ping-route">
   <span class="lbl">${esc(c.label)}</span>
   <span class="val ${verdict(c.ms)}">${c.ms==null?'—':c.ms+' ms'}</span>
 </div>`).join('')
-      +(relayCell?`
+      +(estSrc?`
 <div class="ping-route">
-  <span class="lbl">Schätzung → Spiele-Server<br>(via Relay, inkl. Tunnel)</span>
-  <span class="val ${verdict(relayCell.ms+60)}">${relayCell.ms+60} ms*</span>
+  <span class="lbl">${estLbl}${tunnelEst==null?'<br><small>(Tunnel angenommen, nicht gemessen)</small>':''}</span>
+  <span class="val ${verdict(estSrc.ms+estBase)}">${estSrc.ms+estBase} ms*</span>
 </div>`
       :'');
       pingResults.classList.add('show');
-      pingHint.textContent='* grobe Schätzung: Browser→Relay gemessen + feste Tunnelannahme (60 ms). Direkten Vergleich bieten Beacons.';
+      pingHint.textContent=directCell
+        ?'* Basis: direkte Messung zum RS (Client-Route, ohne Cloudflare) '
+          +'plus gemessene Tunnel-Latenz.'
+        :'* Basis: Relay-Messung über Cloudflare — für die echte '
+          +'Client-Route einen Direkt-Beacon hinterlegen.';
     }catch(e){
       pingHint.textContent='// ping-test fehlgeschlagen';
     }finally{
