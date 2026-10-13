@@ -676,7 +676,6 @@ document.getElementById('year').textContent = new Date().getFullYear();
     }
     const subs=[];
     if(sv.playerNames?.length) subs.push(esc(sv.playerNames.slice(0,6).join(', ')));
-    if(sv.latencyMs!=null) subs.push(`${sv.latencyMs} ms`);
     if(sv.version) subs.push(esc(sv.version));
     return `
 <article class="mc-card state-${esc(sv.state)}">
@@ -697,7 +696,6 @@ document.getElementById('year').textContent = new Date().getFullYear();
     } else {
       subs.push('<b>nicht erreichbar</b>');
     }
-    if(net.latencyMs!=null) subs.push(`${net.latencyMs} ms`);
     if(net.version) subs.push(esc(net.version));
     return `
 <div class="net-bar-inner state-${esc(net.state)}">
