@@ -28,6 +28,7 @@ from pydantic import BaseModel
 import avatar as av
 import db as dbm
 import mailer
+import mcstats_db
 import mcstatus_service as mcstatus
 import mojang
 import security as sec
@@ -946,10 +947,24 @@ async def ping_beacons(user: CurrentUser):
             tunnel_ms = round(min(legs))
     except Exception:
         log.warning("tunnel latency unavailable for ping estimate")
-    return {"relays": [{
-        "label": "Via Netcup (Relay)",
-        "url": "/ping",
-    }], "beacons": beacons, "estimate": {"measuredTunnelMs": tunnel_ms}}
+    # Direct-to-RS beacon: real Minecraft traffic never crosses Cloudflare
+    # (clients hit the RS IP on 25565), so the page times a DNS-only beacon
+    # hostname that terminates on this same container via NPM. Delivered as
+    # a beacon entry (needs CORS, which /ping echoes for trusted origins),
+    # not as a relay — the frontend prefers beacons for the route estimate.
+    direct_url = os.environ.get(
+        "FF_DIRECT_BEACON_URL", "https://ping.max-kuehn.com/ping").rstrip("/")
+    return {
+        "relays": [
+            {"id": "cf", "label": "Via Cloudflare (Seite)", "url": "/ping"},
+        ],
+        "beacons": beacons + [{
+            "id": "direct",
+            "label": "Direkt zum Relay (ohne Cloudflare)",
+            "url": direct_url,
+        }],
+        "estimate": {"measuredTunnelMs": tunnel_ms},
+    }
 
 
 @app.get("/api/stats/ingame")
@@ -995,6 +1010,21 @@ async def stats_ingame(user: CurrentUser, category: str = ""):
         cats_payload.append({"id": c["id"], "icon": c.get("icon"),
                              "boards": boards})
 
+    # Generic "more" category: every vanilla custom stat not already
+    # covered by a mod board becomes its own mini-leaderboard, ranked
+    # straight from the archived vanilla data. This roughly doubles the
+    # visible statistics without touching the mod.
+    covered: set[str] = set()
+    for c in cats_payload:
+        covered.update(b["id"] for b in c["boards"])
+    more_boards = _extra_custom_boards(players, covered)
+    if more_boards and (not category or category == "more"):
+        cats_payload.append({
+            "id": "more",
+            "icon": "minecraft:book",
+            "boards": more_boards,
+        })
+
     profiles = [{
         "uuid": p["uuid"], "name": p["name"],
         "playHours": p["playHours"],
@@ -1010,6 +1040,105 @@ async def stats_ingame(user: CurrentUser, category: str = ""):
 
 
 _LEADERBOARD_META: Optional[list] = None
+
+
+# Maps vanilla custom stat ids to board ids + icons for the generic
+# "more" category. Anything unmapped gets a sensible default icon.
+_MORE_STAT_META = {
+    "minecraft:aviate_one_cm": ("fly-distance", "minecraft:fireworks_rocket"),
+    "minecraft:climb_one_cm": ("climb-distance", "minecraft:ladder"),
+    "minecraft:crouch_one_cm": ("crouch-distance", "minecraft:string"),
+    "minecraft:fall_one_cm": ("fall-distance", "minecraft:feather"),
+    "minecraft:walk_on_water_one_cm": ("walk-water-distance", "minecraft:lily_pad"),
+    "minecraft:walk_under_water_one_cm": ("dive-distance", "minecraft:turtle_helmet"),
+    "minecraft:pig_one_cm": ("pig-distance", "minecraft:carrot_on_a_stick"),
+    "minecraft:damage_absorbed": ("damage-absorbed", "minecraft:golden_apple"),
+    "minecraft:damage_blocked_by_shield": ("damage-blocked", "minecraft:shield"),
+    "minecraft:damage_taken": ("damage-taken", "minecraft:rotten_flesh"),
+    "minecraft:damage_resisted": ("damage-resisted", "minecraft:potion"),
+    "minecraft:damage_dealt_absorbed": ("damage-dealt-absorbed", "minecraft:golden_apple"),
+    "minecraft:damage_dealt_resisted": ("damage-dealt-resisted", "minecraft:potion"),
+    "minecraft:mob_kills": ("mob-kills", "minecraft:iron_sword"),
+    "minecraft:bell_ring": ("bells-rung", "minecraft:bell"),
+    "minecraft:eat_cake_slice": ("cake-eaten", "minecraft:cake"),
+    "minecraft:play_record": ("records-played", "minecraft:music_disc_cat"),
+    "minecraft:play_noteblock": ("noteblocks-played", "minecraft:note_block"),
+    "minecraft:tune_noteblock": ("noteblocks-tuned", "minecraft:note_block"),
+    "minecraft:pot_flower": ("flowers-potted", "minecraft:flower_pot"),
+    "minecraft:open_barrel": ("barrels-opened", "minecraft:barrel"),
+    "minecraft:open_shulker_box": ("shulkers-opened", "minecraft:shulker_box"),
+    "minecraft:open_enderchest": ("enderchests-opened", "minecraft:ender_chest"),
+    "minecraft:trigger_trapped_chest": ("trapped-chests-triggered", "minecraft:trapped_chest"),
+    "minecraft:fill_cauldron": ("cauldrons-filled", "minecraft:cauldron"),
+    "minecraft:use_cauldron": ("cauldrons-used", "minecraft:cauldron"),
+    "minecraft:clean_armor": ("armor-cleaned", "minecraft:leather_helmet"),
+    "minecraft:clean_banner": ("banners-cleaned", "minecraft:white_banner"),
+    "minecraft:clean_shulker_box": ("shulkers-cleaned", "minecraft:shulker_box"),
+    "minecraft:inspect_dispenser": ("dispensers-inspected", "minecraft:dispenser"),
+    "minecraft:inspect_dropper": ("droppers-inspected", "minecraft:dropper"),
+    "minecraft:inspect_hopper": ("hoppers-inspected", "minecraft:hopper"),
+    "minecraft:interact_with_anvil": ("anvil-uses", "minecraft:anvil"),
+    "minecraft:interact_with_beacon": ("beacon-uses", "minecraft:beacon"),
+    "minecraft:interact_with_blast_furnace": ("blast-furnace-uses", "minecraft:blast_furnace"),
+    "minecraft:interact_with_brewingstand": ("brewing-stands-used", "minecraft:brewing_stand"),
+    "minecraft:interact_with_campfire": ("campfires-used", "minecraft:campfire"),
+    "minecraft:interact_with_cartography_table": ("cartography-uses", "minecraft:cartography_table"),
+    "minecraft:interact_with_crafting_table": ("crafting-uses", "minecraft:crafting_table"),
+    "minecraft:interact_with_furnace": ("furnace-uses", "minecraft:furnace"),
+    "minecraft:interact_with_grindstone": ("grindstone-uses", "minecraft:grindstone"),
+    "minecraft:interact_with_lectern": ("lectern-uses", "minecraft:lectern"),
+    "minecraft:interact_with_loom": ("loom-uses", "minecraft:loom"),
+    "minecraft:interact_with_smithing_table": ("smithing-uses", "minecraft:smithing_table"),
+    "minecraft:interact_with_smoker": ("smoker-uses", "minecraft:smoker"),
+    "minecraft:interact_with_stonecutter": ("stonecutter-uses", "minecraft:stonecutter"),
+    "minecraft:raid_trigger": ("raids-triggered", "minecraft:ominous_bottle"),
+    "minecraft:target_hit": ("targets-hit", "minecraft:target"),
+    "minecraft:sleep_in_straw_bed": ("straw-beds-slept", "minecraft:sweet_berries"),
+    "minecraft:sneak_time": ("sneak-time", "minecraft:string"),
+    "minecraft:leave_game": ("sessions-played", "minecraft:oak_door"),
+    "minecraft:time_since_death": ("time-since-death", "minecraft:clock"),
+    "minecraft:time_since_rest": ("time-since-rest", "minecraft:red_bed"),
+    "minecraft:total_world_time": ("time-in-world", "minecraft:clock"),
+    "minecraft:talked_to_villager": ("villager-talks", "minecraft:emerald"),
+    "minecraft:traded_with_villager": ("villager-deals", "minecraft:emerald"),
+}
+
+_LOWER_WIN_BOARDS = {"time-since-death", "time-since-rest", "damage-taken"}
+
+
+def _extra_custom_boards(players: list, covered: set[str]) -> list:
+    """Builds generic boards for uncovered vanilla custom stats.
+
+    Returns [] when the archive carries no vanilla detail (old feeds).
+    """
+    seen: dict[str, dict] = {}
+    for p in players:
+        det = p.get("detail") or {}
+        for e in (det.get("vanilla") or {}).get("custom", []):
+            sid = e.get("id")
+            if not sid or not isinstance(e.get("value"), (int, float)):
+                continue
+            board_id, icon = _MORE_STAT_META.get(sid, (None, None))
+            if board_id is None:
+                # derive: minecraft:foo_bar -> foo-bar
+                board_id = sid.replace("minecraft:", "").replace("_", "-")
+                icon = "minecraft:paper"
+            if board_id in covered:
+                continue
+            agg = seen.setdefault(board_id, {
+                "id": board_id, "unit": e.get("unit") or "count",
+                "icon": icon, "lowerWins": board_id in _LOWER_WIN_BOARDS,
+                "rows": [],
+            })
+            agg["rows"].append((p["name"], float(e["value"]),
+                                e.get("display") or str(e["value"])))
+    out = []
+    for b in seen.values():
+        rows = sorted(b.pop("rows"), key=lambda r: (-r[1], r[0]))
+        b["leaders"] = [{"name": nm, "value": v, "display": d}
+                        for nm, v, d in rows[:10]]
+        out.append(b)
+    return sorted(out, key=lambda b: b["id"])
 
 
 async def _statswebui_boards() -> list:
@@ -1169,6 +1298,109 @@ async def stats_compare(a: str, b: str, user: CurrentUser):
         }
 
     return JSONResponse({"a": slim(pa), "b": slim(pb)})
+
+
+@app.get("/api/stats/live-events")
+async def stats_live_events(user: CurrentUser, player: str = "",
+                           kind: str = "", limit: int = 100):
+    """Live event stream from the MCStats-to-SQL mod (needs credentials).
+
+    Returns pvp_kill / death / join / leave events with resolved player
+    names. Gracefully reports availability:false when the mod database
+    is not configured or unreachable, so the frontend can adapt.
+    """
+    if not mcstats_db.available():
+        return JSONResponse({"available": False, "events": []})
+
+    def uuid_name_map(uuids: set[str]) -> dict[str, str]:
+        """Resolve uuids to names via the mod players table, falling
+        back to the local archive."""
+        out: dict[str, str] = {}
+        if uuids:
+            try:
+                for row in mcstats_db._query(
+                        "SELECT uuid, name FROM players"):
+                    if row["uuid"] in uuids:
+                        out[row["uuid"]] = row["name"]
+            except Exception:
+                pass
+        for p in stats_ingest.archived_players(limit=500):
+            if p["uuid"] in uuids and p["uuid"] not in out:
+                out[p["uuid"]] = p["name"]
+        return out
+
+    try:
+        pu = None
+        if player:
+            row = mcstats_db.player_by_name(player)
+            if not row:
+                raise HTTPException(status_code=404,
+                                     detail="player not found")
+            pu = row["uuid"]
+        rows = mcstats_db.events(player_uuid=pu, kind=kind or None,
+                                 limit=limit)
+        names = uuid_name_map({r["player_uuid"] for r in rows}
+                              | {r["opponent_uuid"] for r in rows
+                                 if r["opponent_uuid"]})
+        return JSONResponse({
+            "available": True,
+            "events": [{
+                "ts": r["ts"], "kind": r["kind"],
+                "player": r["player_uuid"],
+                "playerName": names.get(r["player_uuid"], "?"),
+                "opponent": r["opponent_uuid"],
+                "opponentName": names.get(r["opponent_uuid"])
+                                if r["opponent_uuid"] else None,
+                "detail": r["detail"],
+            } for r in rows],
+        })
+    except HTTPException:
+        raise
+    except mcstats_db.DbMissing:
+        return JSONResponse({"available": False, "events": [],
+                             "error": "waiting-for-mod"})
+    except Exception as exc:
+        log.warning("live-events query failed: %s", exc)
+        return JSONResponse({"available": False, "events": [],
+                             "error": "db-unreachable"})
+
+
+@app.get("/api/stats/pvp/{name}")
+async def stats_pvp(name: str, user: CurrentUser):
+    """PvP record for one player: kills/deaths per opponent."""
+    if not mcstats_db.available():
+        return JSONResponse({"available": False, "records": []})
+    try:
+        row = mcstats_db.player_by_name(name)
+        if not row:
+            raise HTTPException(status_code=404, detail="player not found")
+        recs = mcstats_db.pvp_summary(row["uuid"])
+        names: dict[str, str] = {}
+        try:
+            for p in mcstats_db._query("SELECT uuid, name FROM players"):
+                names[p["uuid"]] = p["name"]
+        except Exception:
+            pass
+        for p in stats_ingest.archived_players(limit=500):
+            names.setdefault(p["uuid"], p["name"])
+        return JSONResponse({
+            "available": True,
+            "records": [{
+                "side": r["side"],          # 'kills' | 'deaths_by'
+                "opponent": r["other_uuid"],
+                "opponentName": names.get(r["other_uuid"], "?"),
+                "count": r["cnt"],
+            } for r in recs],
+        })
+    except HTTPException:
+        raise
+    except mcstats_db.DbMissing:
+        return JSONResponse({"available": False, "records": [],
+                             "error": "waiting-for-mod"})
+    except Exception as exc:
+        log.warning("pvp query failed: %s", exc)
+        return JSONResponse({"available": False, "records": [],
+                             "error": "db-unreachable"})
 
 
 @app.get("/api/stats/community")

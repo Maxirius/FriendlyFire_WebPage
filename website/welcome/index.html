@@ -813,13 +813,13 @@ document.getElementById('year').textContent = new Date().getFullYear();
       ];
       const cells=await Promise.all(routes.map(async rt=>{
         const ms=await measureMedian(rt.url);
-        return {label:rt.label,ms,type:rt.type,url:rt.url};
+        return {id:rt.id,label:rt.label,ms,type:rt.type,url:rt.url};
       }));
       // Estimate toward the game servers: prefer the direct-to-RS beacon
       // (mirrors the client route without Cloudflare), fall back to the
       // relay measurement; tunnel leg measured when the collector has one.
       const relayCell=cells.find(c=>c.type==='relay'&&c.ms!=null);
-      const directCell=cells.find(c=>c.type==='beacon'&&c.ms!=null);
+      const directCell=cells.find(c=>c.id==='direct'&&c.ms!=null);
       const estSrc=directCell||relayCell;
       const tunnelEst=cfg.estimate&&typeof cfg.estimate.measuredTunnelMs==='number'
         ? cfg.estimate.measuredTunnelMs : null;

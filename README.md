@@ -46,9 +46,16 @@ DEPLOYMENT_PLAN.md           Architecture & deployment steps
   status block (two world cards + a network bar).
 - Ping test: `GET /ping` is a tiny 204 beacon the page times with
   `performance.now()` (median of 5 samples). `GET /api/ping/beacons`
-  returns the relay measurement plus optional extra beacons from
-  `FF_PING_BEACONS` (JSON array `[{label,url}]`) — meant for a future
-  direct-to-home endpoint so members can compare routes.
+  returns the site-path relay measurement (through Cloudflare), optional
+  extra beacons from `FF_PING_BEACONS` (JSON array `[{label,url}]`),
+  a direct-to-RS beacon (`FF_DIRECT_BEACON_URL`, default
+  `https://ping.max-kuehn.com/ping` — DNS-only host terminating on the
+  auth container via NPM, mirroring the real client route to :25565),
+  and `estimate.measuredTunnelMs` taken from the cached status collector
+  (min latency across reachable servers). The page estimates the route
+  to the game servers as direct-beacon + measured tunnel leg, falling
+  back to the CF-path + 60 ms when no tunnel figure is available.
+  `/ping` echoes CORS for trusted origins so cross-origin beacons work.
 
 ## Deployment (quick guide)
 
