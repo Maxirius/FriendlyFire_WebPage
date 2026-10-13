@@ -89,6 +89,12 @@ nav.links a:hover:not(.soon){color:var(--ink);}
 
 @media(max-width:720px){
   nav.links a.hide-mobile{display:none;}
+  /* Keep the header one row tall; the anchor strip scrolls horizontally
+     instead of pushing the page wider than the viewport. */
+  .nav{height:auto;flex-wrap:wrap;gap:10px;padding:10px 0;}
+  nav.links{margin-left:0;width:100%;overflow-x:auto;scrollbar-width:none;}
+  nav.links::-webkit-scrollbar{display:none;}
+  nav.links a{padding:6px 8px;font-size:13px;white-space:nowrap;flex:none;}
 }
 
 /* ---------- Hero ---------- */
