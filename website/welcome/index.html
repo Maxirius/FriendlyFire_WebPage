@@ -905,12 +905,12 @@ document.getElementById('year').textContent = new Date().getFullYear();
       const estRows=[];
       if(doorCell) estRows.push(`
 <div class="ping-route">
-  <span class="lbl">Schätzung → Spiele-Server<br>(direkt, wie der Client)</span>
+  <span class="lbl">Direkt zum Spiele-Server<br>(Haustür, wie der Client)</span>
   <span class="val ${verdict(doorCell.ms)}">${doorCell.ms} ms</span>
 </div>`);
       if(rzCell&&estBase!=null) estRows.push(`
 <div class="ping-route">
-  <span class="lbl">Schätzung → Spiele-Server<br>(über RZ + VPN-Tunnel)</span>
+  <span class="lbl">Umleitung über RZ Nürnberg<br>(bis RZ + VPN-Tunnel)</span>
   <span class="val ${verdict(rzCell.ms+estBase)}">${rzCell.ms+estBase} ms*</span>
 </div>`);
       pingResults.innerHTML = cells.map(c=>`
@@ -921,8 +921,8 @@ document.getElementById('year').textContent = new Date().getFullYear();
       +estRows.join('');
       pingResults.classList.add('show');
       pingHint.textContent=rzCell
-        ?('* RZ-Route: Beacon endet am RS (misst Browser→RZ) + gemessene '
-          +'Tunnel-Transit'+(estBase==null?', Tunnel nicht messbar':''))
+        ?('* Umleitung: Messung endet am RZ (Browser→Nürnberg) + gemessene ')
+          +'Tunnel-Transit bis zum Spiele-Server'+(estBase==null?', Tunnel nicht messbar':'')
         :(doorCell
           ?'* Haustür-Beacon misst exakt die Client-Route.'
           :'* keine Route messbar.');

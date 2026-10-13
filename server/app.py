@@ -965,7 +965,7 @@ async def ping_beacons(user: CurrentUser):
         "relays": [],
         "beacons": beacons + [{
             "id": "rz",
-            "label": "Umleitung über RZ Nürnberg (VPN)",
+            "label": "Bis Rechenzentrum Nürnberg (Detour)",
             "url": rz_url,
         }],
         "estimate": {"measuredTunnelMs": tunnel_ms},
