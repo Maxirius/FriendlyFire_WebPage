@@ -44,18 +44,19 @@ DEPLOYMENT_PLAN.md           Architecture & deployment steps
   AMP-wrapper "Powered by AMP" MOTD are classified as `stopped`
   (instance paused), not online. The welcome page renders this as a
   status block (two world cards + a network bar).
-- Ping test: `GET /ping` is a tiny 204 beacon the page times with
-  `performance.now()` (median of 5 samples). `GET /api/ping/beacons`
-  returns the site-path relay measurement (through Cloudflare), optional
-  extra beacons from `FF_PING_BEACONS` (JSON array `[{label,url}]`),
-  a direct-to-RS beacon (`FF_DIRECT_BEACON_URL`, default
-  `https://ping.max-kuehn.com/ping` — DNS-only host terminating on the
-  auth container via NPM, mirroring the real client route to :25565),
-  and `estimate.measuredTunnelMs` taken from the cached status collector
-  (min latency across reachable servers). The page estimates the route
-  to the game servers as direct-beacon + measured tunnel leg, falling
-  back to the CF-path + 60 ms when no tunnel figure is available.
-  `/ping` echoes CORS for trusted origins so cross-origin beacons work.
+- Ping test: the page times beacons with `performance.now()` (median of
+  5 samples). `GET /api/ping/beacons` (members-only) returns the routes:
+  `door` (primary player door — beacon hosted AT the game VM, published
+  via OPNsense NAT; enabled by setting `FF_DOOR_BEACON_URL`), `rz`
+  (detour via the Netcup RZ — beacon terminating on the RS), plus
+  optional extras from `FF_PING_BEACONS` (JSON array
+  `[{id,label,url}]`). Because the RZ beacon never traverses the tunnel,
+  the page adds `estimate.measuredTunnelMs` — the collector's
+  `tunnelTransitMs` (naked TCP connect RS -> VM via WireGuard, best of
+  2) — to the RZ measurement. The network status card probes the SAME
+  player door (`drck.dev:25565` default, `FF_MC_STATUS_TARGETS`).
+  There is deliberately NO Cloudflare route anymore. `/ping` echoes
+  CORS for trusted origins so cross-origin beacons work.
 
 ## Deployment (quick guide)
 

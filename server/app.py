@@ -916,52 +916,57 @@ async def ping(request: Request):
 
 @app.get("/api/ping/beacons")
 async def ping_beacons(user: CurrentUser):
-    """Extra latency beacons (e.g. a future direct-to-home endpoint).
+    """Latency routes for the in-page ping test.
 
-    Configured via FF_PING_BEACONS as a JSON array of
-    {"label": "...", "url": "https://..."}. Every beacon endpoint must
-    send CORS headers allowing this origin, since the browser times
-    cross-origin fetches against it.
+    Two routes mirror the two ways members reach the network:
+
+    - ``door``: primary player door — a beacon hosted AT the game VM
+      (published via OPNsense NAT, HTTPS), measuring exactly the
+      client->home route. Requires FF_DOOR_BEACON_URL to be set.
+    - ``rz``: detour via the RZ (Netcup Nuremberg) — the browser times a
+      beacon terminating on the RS; the page ADDS the measured WireGuard
+      tunnel transit (collector ``tunnelTransitMs``), since the beacon
+      stops at the RS and never traverses the tunnel.
+
+    Additional routes via FF_PING_BEACONS (JSON array {label,url}); every
+    beacon endpoint must send CORS headers allowing this origin.
     """
     raw = os.environ.get("FF_PING_BEACONS", "").strip()
     beacons: list = []
     if raw:
         try:
             for b in json.loads(raw):
-                beacons.append({"label": str(b.get("label") or "?"),
-                                "url": str(b.get("url") or "")})
+                beacons.append({
+                    "id": str(b.get("id") or "extra"),
+                    "label": str(b.get("label") or "?"),
+                    "url": str(b.get("url") or ""),
+                })
         except Exception:
             log.warning("FF_PING_BEACONS unparsable, ignoring")
 
-    # Measured tunnel leg (RS -> game VM via WireGuard) feeds the page's
-    # route estimate. Taken from the cached status collector so no extra
-    # probes fire; the minimum across reachable entries approximates the
-    # tunnel RTT floor. Falls back to the page's fixed assumption (60 ms)
-    # when nothing is reachable yet.
+    rz_url = os.environ.get(
+        "FF_RZ_BEACON_URL", "https://ping.max-kuehn.com/ping").rstrip("/")
+    door_url = os.environ.get("FF_DOOR_BEACON_URL", "").rstrip("/")
+    if door_url:
+        beacons.insert(0, {"id": "door",
+                           "label": "Direkt zum Gameserver (Haustür)",
+                           "url": door_url})
+
+    # Tunnel transit (RS -> game VM via WireGuard, naked TCP connect) is
+    # added to the RZ beacon measurement: that beacon ends at the RS and
+    # never touches the tunnel, so the additive term completes the route.
     tunnel_ms = None
     try:
         data = await mcstatus.collect()
-        legs = [s["latencyMs"] for s in data.get("servers", [])
-                if isinstance(s.get("latencyMs"), (int, float))]
-        if legs:
-            tunnel_ms = round(min(legs))
+        tunnel_ms = data.get("tunnelTransitMs")
     except Exception:
-        log.warning("tunnel latency unavailable for ping estimate")
-    # Direct-to-RS beacon: real Minecraft traffic never crosses Cloudflare
-    # (clients hit the RS IP on 25565), so the page times a DNS-only beacon
-    # hostname that terminates on this same container via NPM. Delivered as
-    # a beacon entry (needs CORS, which /ping echoes for trusted origins),
-    # not as a relay — the frontend prefers beacons for the route estimate.
-    direct_url = os.environ.get(
-        "FF_DIRECT_BEACON_URL", "https://ping.max-kuehn.com/ping").rstrip("/")
+        log.warning("tunnel transit unavailable for ping estimate")
     return {
-        "relays": [
-            {"id": "cf", "label": "Via Cloudflare (Seite)", "url": "/ping"},
-        ],
+        "relays": [],
         "beacons": beacons + [{
-            "id": "direct",
-            "label": "Direkt zum Relay (ohne Cloudflare)",
-            "url": direct_url,
+            "id": "rz",
+            "label": "Umleitung über RZ Nürnberg (VPN)",
+            "url": rz_url,
         }],
         "estimate": {"measuredTunnelMs": tunnel_ms},
     }

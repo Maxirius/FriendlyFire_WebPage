@@ -702,7 +702,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
     return `
 <div class="net-bar-inner state-${esc(net.state)}">
   <span class="lamp ${lampCls(net.state)}"></span>
-  <span>NETZWERK&nbsp;<small>// velocity-eingang</small></span>
+  <span>NETZWERK&nbsp;<small>// spieler-eingang (haustür)</small></span>
   <span>${subs.join('&nbsp;&nbsp;·&nbsp;&nbsp;')}</span>
 </div>`;
   }
@@ -807,43 +807,43 @@ document.getElementById('year').textContent = new Date().getFullYear();
     pingResults.innerHTML='';
     try{
       const cfg=await (await fetch('/api/ping/beacons')).json();
-      const routes=[
-        ...(cfg.relays||[]).map(r=>({...r,type:'relay'})),
-        ...(cfg.beacons||[]).map(b=>({...b,type:'beacon'})),
-      ];
+      const routes=(cfg.beacons||[]);
       const cells=await Promise.all(routes.map(async rt=>{
         const ms=await measureMedian(rt.url);
-        return {id:rt.id,label:rt.label,ms,type:rt.type,url:rt.url};
+        return {id:rt.id,label:rt.label,ms,type:'beacon',url:rt.url};
       }));
-      // Estimate toward the game servers: prefer the direct-to-RS beacon
-      // (mirrors the client route without Cloudflare), fall back to the
-      // relay measurement; tunnel leg measured when the collector has one.
-      const relayCell=cells.find(c=>c.type==='relay'&&c.ms!=null);
-      const directCell=cells.find(c=>c.id==='direct'&&c.ms!=null);
-      const estSrc=directCell||relayCell;
+      // RZ route: the beacon terminates at the RS (never traverses the
+      // tunnel), so the measured tunnel transit completes the picture.
+      // Door route needs NO additive term — it IS the player route.
+      const doorCell=cells.find(c=>c.id==='door'&&c.ms!=null);
+      const rzCell=cells.find(c=>c.id==='rz'&&c.ms!=null);
       const tunnelEst=cfg.estimate&&typeof cfg.estimate.measuredTunnelMs==='number'
         ? cfg.estimate.measuredTunnelMs : null;
-      const estBase=tunnelEst!=null?tunnelEst:60;
-      const estLbl=directCell
-        ?'Schätzung → Spiele-Server<br>(direkt zum RS + Tunnel)'
-        :'Schätzung → Spiele-Server<br>(via Relay + Tunnel)';
+      const estBase=tunnelEst!=null?tunnelEst:null;
+      const estRows=[];
+      if(doorCell) estRows.push(`
+<div class="ping-route">
+  <span class="lbl">Schätzung → Spiele-Server<br>(direkt, wie der Client)</span>
+  <span class="val ${verdict(doorCell.ms)}">${doorCell.ms} ms</span>
+</div>`);
+      if(rzCell&&estBase!=null) estRows.push(`
+<div class="ping-route">
+  <span class="lbl">Schätzung → Spiele-Server<br>(über RZ + VPN-Tunnel)</span>
+  <span class="val ${verdict(rzCell.ms+estBase)}">${rzCell.ms+estBase} ms*</span>
+</div>`);
       pingResults.innerHTML = cells.map(c=>`
 <div class="ping-route">
   <span class="lbl">${esc(c.label)}</span>
   <span class="val ${verdict(c.ms)}">${c.ms==null?'—':c.ms+' ms'}</span>
 </div>`).join('')
-      +(estSrc?`
-<div class="ping-route">
-  <span class="lbl">${estLbl}${tunnelEst==null?'<br><small>(Tunnel angenommen, nicht gemessen)</small>':''}</span>
-  <span class="val ${verdict(estSrc.ms+estBase)}">${estSrc.ms+estBase} ms*</span>
-</div>`
-      :'');
+      +estRows.join('');
       pingResults.classList.add('show');
-      pingHint.textContent=directCell
-        ?'* Basis: direkte Messung zum RS (Client-Route, ohne Cloudflare) '
-          +'plus gemessene Tunnel-Latenz.'
-        :'* Basis: Relay-Messung über Cloudflare — für die echte '
-          +'Client-Route einen Direkt-Beacon hinterlegen.';
+      pingHint.textContent=rzCell
+        ?('* RZ-Route: Beacon endet am RS (misst Browser→RZ) + gemessene '
+          +'Tunnel-Transit'+(estBase==null?', Tunnel nicht messbar':''))
+        :(doorCell
+          ?'* Haustür-Beacon misst exakt die Client-Route.'
+          :'* keine Route messbar.');
     }catch(e){
       pingHint.textContent='// ping-test fehlgeschlagen';
     }finally{

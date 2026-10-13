@@ -32,8 +32,11 @@ def _env_targets() -> List[Dict[str, str]]:
          "address": "192.168.10.6:25573"},
         {"id": "creative", "label": "Creative", "kind": "world",
          "address": "192.168.10.6:25574"},
+        # The network entry is probed through the PRIMARY player door
+        # (home WAN via DDNS + OPNsense NAT), matching what real clients
+        # experience — NOT through the RS relay tunnel.
         {"id": "network", "label": "Netzwerk", "kind": "network",
-         "address": "192.168.10.6:25565"},
+         "address": "drck.dev:25565"},
     ]
     raw = os.environ.get("FF_MC_STATUS_TARGETS", "").strip()
     if not raw:
@@ -208,6 +211,52 @@ async def probe(address: str, timeout: float = 3.0) -> Tuple[dict, int]:
 
 
 # ---------------------------------------------------------------------------
+# Naked TCP transit (no protocol overhead)
+# ---------------------------------------------------------------------------
+_TUNNEL_TRANSIT_DEFAULT = "192.168.10.6:25565"
+
+
+def _transit_target() -> str:
+    return os.environ.get("FF_TUNNEL_TRANSIT_TARGET",
+                          _TUNNEL_TRANSIT_DEFAULT).strip()
+
+
+async def tcp_transit_ms(target: str, timeout: float = 3.0,
+                         samples: int = 2) -> Optional[int]:
+    """Round-trip of a bare TCP connect (SYN/SYN-ACK/ACK), best of N.
+
+    Unlike the protocol ping this excludes JVM/proxy processing, so it
+    approximates the pure network transit of a path — usable as the
+    additive tunnel component in latency estimates.
+    """
+    host, sep, port_s = target.rpartition(":")
+    if not sep:
+        host, port_s = target, "25565"
+    port = int(port_s)
+    best: Optional[float] = None
+    for _ in range(max(1, samples)):
+        opened = time.monotonic()
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(host, port), timeout)
+        except Exception:
+            continue
+        try:
+            lat = (time.monotonic() - opened) * 1000
+            best = lat if best is None else min(best, lat)
+        finally:
+            writer.close()
+            try:
+                await asyncio.wait_for(writer.wait_closed(), 1.0)
+            except Exception:
+                pass
+            transport = getattr(writer, "transport", None)
+            if transport is not None:
+                transport.abort()
+    return None if best is None else int(round(best))
+
+
+# ---------------------------------------------------------------------------
 # Aggregation with a small cache (frontend polls every 30 s)
 # ---------------------------------------------------------------------------
 _CACHE: Dict[str, Any] = {"ts": 0.0, "data": None}
@@ -218,6 +267,8 @@ def _cache_ttl() -> float:
         return max(5.0, float(os.environ.get("FF_MC_STATUS_TTL_S", "20")))
     except ValueError:
         return 20.0
+
+
 
 
 def shape_entry(target: dict, js: Optional[dict],
@@ -263,9 +314,11 @@ async def collect(force: bool = False) -> dict:
             return shape_entry(t, None, None, f"{type(exc).__name__}")
 
     entries = await asyncio.gather(*(grab(t) for t in targets))
+    transit = await tcp_transit_ms(_transit_target())
     data = {
         "checkedAt": int(now),
         "nextRefreshSec": int(_cache_ttl()),
+        "tunnelTransitMs": transit,
         "servers": list(entries),
     }
     _CACHE["ts"] = now
