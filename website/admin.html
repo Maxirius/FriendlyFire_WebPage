@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · FriendlyFire Minecraft</title>
+
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+.admin-hero{padding:44px 0 8px;}
+.admin-hero h1{font-size:26px;font-weight:700;letter-spacing:-.01em;}
+.admin-hero .sub{color:var(--muted);font-size:14px;}
+.back-link{color:var(--muted);text-decoration:none;font-size:13px;}
+.back-link:hover{color:var(--ink);}
+.section-gap{margin-top:26px;}
+.inline-form{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.inline-form input[type=text]{flex:1;min-width:220px;}
+.rev-line{font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  margin-bottom:14px;}
+.empty-cell{color:var(--muted);}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap nav">
+    <!-- PLACEHOLDER: wordmark = technisch bis Markenname steht -->
+    <a class="wordmark" href="/">MC.<em>MAX-KUEHN</em>.COM</a>
+    <nav class="userarea" id="userArea"><span class="chip">&nbsp;</span></nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="toast" id="toast"></div>
+
+  <noscript>
+    <div class="panel" style="margin-top:40px">
+      <strong>JavaScript erforderlich</strong>
+      <p class="desc">Das Admin-Portal benötigt JavaScript für API-Zugriffe.</p>
+    </div>
+  </noscript>
+
+  <div class="admin-hero">
+    <a class="back-link" href="/">← Zurück zur Übersicht</a>
+    <h1>Administration</h1>
+    <p class="sub">Kennzahlen, Benutzer, Whitelist-Extras</p>
+  </div>
+
+  <div class="grid" style="padding-top:26px">
+
+    <!-- KENNZAHLLEN -->
+    <section class="stats-chips" id="statsRow">
+      <div class="stat-chip"><div class="num" id="scUsers">–</div>
+        <div class="lbl">COMMUNITY-MITGLIEDER</div></div>
+      <div class="stat-chip"><div class="num" id="scPending">–</div>
+        <div class="lbl">OFFENE EINLADUNGEN</div></div>
+      <div class="stat-chip"><div class="num" id="scSessions">–</div>
+        <div class="lbl">AKTIVE SITZUNGEN</div></div>
+      <div class="stat-chip"><div class="num" id="scRev">–</div>
+        <div class="lbl">WHITELIST-REVISION</div></div>
+    </section>
+
+    <!-- BENUTZER -->
+    <section class="panel section-gap">
+      <h2>Benutzer</h2>
+      <p class="desc">Einladungsrechte verwalten, Accounts sperren oder
+        entsperren. Sperrung beendet Sitzungen und entfernt die Person von
+        der Whitelist.</p>
+      <div class="scroll-x">
+        <table class="tbl">
+          <thead><tr>
+            <th>ID</th><th>Email</th><th>Nickname</th><th>Rolle</th>
+            <th>May invite</th><th>Status</th><th>Aktionen</th>
+          </tr></thead>
+          <tbody id="usrRows">
+            <tr><td colspan="7" class="empty-cell">Lade …</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- WHITELIST EXTRA -->
+    <section class="panel section-gap">
+      <h2>Whitelist-Extras</h2>
+      <p class="desc">Personen ohne Website-Account direkt auf die
+        Whitelist setzen (z.&nbsp;B. Bot-Namen). Diese Liste ist Teil der
+        Feed-Revision, die der Velocity-Proxy alle 60&nbsp;s zieht.</p>
+      <p class="rev-line" id="revLine">revision: …</p>
+      <div class="inline-form">
+        <input type="text" id="extraNick" maxlength="16"
+               placeholder="Minecraft-Nickname">
+        <input type="text" id="extraNote" maxlength="200"
+               placeholder="Notiz (optional)">
+        <button class="btn small" id="addExtraBtn">Hinzufügen</button>
+      </div>
+      <div class="scroll-x">
+        <table class="tbl">
+          <thead><tr>
+            <th>Name</th><th>UUID</th><th>Notiz</th><th>Quelle</th><th></th>
+          </tr></thead>
+          <tbody id="extraRows">
+            <tr><td colspan="5" class="empty-cell">Lade …</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="wrap">
+  <span>&copy; <span id="yr"></span> FriendlyFire · Minecraft-Community</span>
+  <span class="mono-sm" style="color:var(--muted)">admin-bereich ·
+    <button class="linkish" id="logoutBtn" style="padding:0">Abmelden</button></span>
+</footer>
+
+<script>
+'use strict';
+
+const MSG_ERRORS={
+  weak_password:'Das Passwort ist zu kurz (mind. 10 Zeichen).',
+  invalid_nick_format:'Nick: 3–16 Zeichen, nur Buchstaben/Zahlen/_',
+  unknown_nick:'Diesen Minecraft-Namen gibt es nicht.',
+  nick_taken:'Dieser Nickname ist schon vergeben (Account oder Extras).',
+  forbidden:'Keine Berechtigung dafür.',
+  rate_limited:'Zu viele Anfragen — kurz warten.',
+  mojang_unavailable:'Mojang gerade nicht erreichbar — später erneut.',
+  invalid_uuid:'Ungültige UUID.',
+};
+const qs=s=>document.querySelector(s);
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;',
+  '>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(txt){
+  const t=qs('#toast');t.textContent=txt;t.classList.add('show');
+  clearTimeout(window.__tt);window.__tt=setTimeout(()=>{
+    t.classList.remove('show');},2600);
+}
+async function api(method,path,body){
+  const opts={method,credentials:'same-origin'};
+  if(body!==undefined){
+    opts.body=JSON.stringify(body);
+    opts.headers={'Content-Type':'application/json'};
+  }
+  const r=await fetch(path,opts);
+  if(r.status===401){location.href='/login';throw new Error('anon');}
+  let payload=null;
+  try{payload=await r.clone().json();}catch(_){}
+  if(!r.ok){
+    throw Object.assign(new Error('api'),
+      {code:payload?.detail?.code,status:r.status});
+  }
+  return payload ?? {};
+}
+
+// ---- boot -------------------------------------------------------------
+let ME=null;
+(async()=>{
+  qs('#yr').textContent=new Date().getFullYear();
+  try{
+    ME=(await api('GET','/api/me')).user;
+  }catch(err){
+    if(err&&err.message==='anon'){return;}
+    location.href='/login';return;
+  }
+  if(ME.role!=='admin'){
+    // Members see their usual dashboard instead of a broken admin page.
+    location.replace('/');return;
+  }
+  paintHeader(ME);
+  refreshStats(); refreshUsers(); refreshExtras();
+})();
+
+function paintHeader(me){
+  qs('#userArea').innerHTML=`
+    <a class="chip" href="/dashboard.html">
+      <img src="/avatar/${encodeURIComponent(me.nickname)}.png" alt="">
+      <span>${esc(me.nickname)}</span>
+    </a>
+    <a class="linkish" href="/">Übersicht</a>
+    <a class="linkish" href="/dashboard.html">Mein Konto</a>
+    <button class="linkish" id="navLogout" style="padding:8px 10px">Logout</button>`;
+  qs('#navLogout').addEventListener('click',async ()=>{
+    try{await api('POST','/api/logout');}catch(_){}
+    location.href='/login';
+  });
+}
+
+// ---- stats ------------------------------------------------------------
+async function refreshStats(){
+  try{
+    const s=await api('GET','/api/admin/stats');
+    qs('#scUsers').textContent=s.users;
+    qs('#scPending').textContent=s.pendingInvites;
+    qs('#scSessions').textContent=s.sessions;
+  }catch(_){}
+}
+
+// ---- users ------------------------------------------------------------
+async function refreshUsers(){
+  const tb=qs('#usrRows');
+  try{
+    const data=await api('GET','/api/admin/users');
+    tb.innerHTML=data.users.map(u=>`
+      <tr>
+        <td>#${u.id}</td>
+        <td class="mono-sm">${esc(u.email)}</td>
+        <td>${esc(u.nickname)}</td>
+        <td>${u.role==='admin'?'<span class="tag live">ADMIN</span>'
+                               :'<span class="tag">MEMBER</span>'}</td>
+        <td>${u.invitesEnabled?'✔':'—'}</td>
+        <td>${u.disabled?'<span class="tag dead">GESPERRT</span>'
+                        :'<span class="tag live">OK</span>'}</td>
+        <td style="white-space:nowrap">
+          <button class="btn small ghost" data-toggle="${u.id}"
+            data-next="${u.invitesEnabled?'0':'1'}">
+            ${u.invitesEnabled?'Invite entziehen':'Invite erlauben'}
+          </button>
+          ${u.id!==ME.id?`
+          <button class="btn small ${u.disabled?'':'danger'}"
+            data-disable="${u.id}" data-next="${u.disabled?'0':'1'}">
+            ${u.disabled?'Entsperren':'Sperren'}
+          </button>`:''}
+        </td>
+      </tr>`).join('');
+  }catch(_){
+    tb.innerHTML='<tr><td colspan="7" style="color:var(--danger)">'
+     +'Benutzerliste nicht ladbar.</td></tr>';
+  }
+}
+
+// ---- whitelist extras -------------------------------------------------
+async function refreshExtras(){
+  const tb=qs('#extraRows');
+  try{
+    const data=await api('GET','/api/admin/whitelist/extras');
+    qs('#revLine').textContent=
+      `revision: ${data.revision} · quelle der wahrheit für den velocity-feed`;
+    if(!data.extras.length){
+      tb.innerHTML='<tr><td colspan="5" class="empty-cell">'
+        +'Noch keine Extraseinträge.</td></tr>';
+      return;
+    }
+    tb.innerHTML=data.extras.map(e=>`
+      <tr>
+        <td>${esc(e.name)}</td>
+        <td class="mono-sm">${esc(String(e.uuid).replace(
+          /^(.{8}).*(.{8})$/,'$1…$2'))}</td>
+        <td>${esc(e.note||'—')}</td>
+        <td><span class="tag">${esc(e.source)}</span></td>
+        <td><button class="btn small danger" data-del-extra="${esc(e.uuid)}"
+              title="Von der Whitelist entfernen">✕ Entfernen</button></td>
+      </tr>`).join('');
+  }catch(_){
+    tb.innerHTML='<tr><td colspan="5" style="color:var(--danger)">'
+      +'Extras nicht ladbar.</td></tr>';
+  }
+}
+
+qs('#addExtraBtn').addEventListener('click',async ev=>{
+  const btn=ev.currentTarget;
+  const nick=qs('#extraNick').value.trim();
+  if(!nick){return;}
+  btn.disabled=true;
+  try{
+    await api('POST','/api/admin/whitelist/extras',
+      {nickname:nick,note:qs('#extraNote').value.trim()});
+    toast('Extra hinzugefügt — Feed aktualisiert sich binnen 60 s.');
+    qs('#extraNick').value='';qs('#extraNote').value='';
+    refreshExtras();
+  }catch(err){
+    toast(MSG_ERRORS[err.code]||'Hinzufügen fehlgeschlagen.');
+  }finally{btn.disabled=false;}
+});
+
+document.addEventListener('click',ev=>{
+  const del=ev.target.closest('[data-del-extra]');
+  if(del){
+    api('DELETE',`/api/admin/whitelist/extras/${del.dataset.delExtra}`)
+      .then(()=>{toast('Extra entfernt.');refreshExtras();})
+      .catch(err=>toast(MSG_ERRORS[err.code]||'Entfernen fehlgeschlagen.'));
+    return;
+  }
+  const tg=ev.target.closest('[data-toggle]');
+  if(tg){
+    api('POST',`/api/admin/users/${tg.dataset.toggle}/allow-invites`,
+        {enabled:tg.dataset.next==='1'})
+      .then(()=>{toast('Rechte aktualisiert.');refreshUsers();})
+      .catch(err=>toast(MSG_ERRORS[err.code]||'Update fehlgeschlagen.'));
+    return;
+  }
+  const ds=ev.target.closest('[data-disable]');
+  if(ds){
+    // data-next describes the TARGET state: '1'=activate, '0'=ban.
+    api('POST',`/api/admin/users/${ds.dataset.disable}/disable`,
+        {enabled:ds.dataset.next==='1'})
+      .then(()=>{toast('Benutzerstatus geändert.');refreshUsers();refreshStats();})
+      .catch(err=>toast(MSG_ERRORS[err.code]||'Update fehlgeschlagen.'));
+  }
+});
+
+// ---- logout -----------------------------------------------------------
+qs('#logoutBtn').addEventListener('click',async ()=>{
+  try{await api('POST','/api/logout');}catch(_){}
+  location.href='/login';
+});
+</script>
+
+</body>
+</html>

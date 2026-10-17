@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statistiken · FriendlyFire Minecraft</title>
+
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+.hero{padding:40px 0 8px;}
+.hero h1{font-size:clamp(22px,4vw,28px);font-weight:700;letter-spacing:-.01em;}
+.hero .sub{color:var(--muted);font-size:14px;}
+.back-link{color:var(--muted);text-decoration:none;font-size:13px;}
+.back-link:hover{color:var(--ink);}
+
+/* ---- layout scaffolding (mobile-first) ---- */
+.grid-main{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;
+  padding:0 0 90px;align-items:start;}
+@media(min-width:920px){
+  .grid-main{grid-template-columns:250px minmax(0,1fr);gap:26px;}
+  .sidebar{position:sticky;top:84px;}
+}
+.sidebar{border:1px solid var(--border);background:var(--panel);
+  padding:14px;}
+.sb-title{font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+
+/* horizontal chip row on mobile, vertical list on desktop */
+.cat-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;
+  scrollbar-width:thin;-webkit-overflow-scrolling:touch;}
+@media(min-width:920px){.cat-scroll{flex-direction:column;overflow:visible;
+  padding-bottom:0;}}
+.sb-cat{appearance:none;cursor:pointer;border:1px solid var(--border);
+  background:var(--panel-2);color:var(--muted);
+  font-family:var(--font-mono);font-size:12px;font-weight:600;
+  padding:9px 14px;letter-spacing:.05em;text-transform:uppercase;
+  white-space:nowrap;flex:none;display:flex;align-items:center;gap:9px;
+  width:100%;text-align:left;
+  transition:color .15s,border-color .15s;}
+.sb-cat:hover{color:var(--ink);border-color:var(--muted);}
+.sb-cat.active{color:var(--accent-ink);background:var(--accent);
+  border-color:var(--accent);}
+.sb-count{margin-left:auto;font-size:10px;opacity:.75;}
+@media(max-width:919px){
+  .sb-count{display:none;}
+  .sb-cat{width:auto;flex:none;}
+}
+
+/* ---- icons ---- */
+.ic{image-rendering:pixelated;display:block;flex:none;}
+.ic.sm{width:18px;height:18px;}
+.ic.md{width:22px;height:22px;}
+.ic.lg{width:30px;height:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));}
+.sm-emo,.md-emo,.lg-emo{line-height:1;display:inline-flex;flex:none;}
+.sm-emo{font-size:18px;}
+.md-emo{font-size:22px;}
+.lg-emo{font-size:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));}
+
+/* ---- view header row ---- */
+.view-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:22px 0 16px;}
+.view-head .vt{font-size:19px;font-weight:700;}
+.pa-btn{appearance:none;cursor:pointer;background:var(--panel-2);
+  border:1px solid var(--border);color:var(--ink);font-family:inherit;
+  font-size:13px;padding:9px 14px;text-decoration:none;flex:none;}
+.pa-btn:hover{border-color:var(--muted);}
+.pa-btn.on{color:var(--accent);border-color:var(--accent);}
+
+/* ---- leaderboard boards ---- */
+.mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+  gap:14px;}
+@media(max-width:560px){.mod-grid{grid-template-columns:1fr 1fr;gap:10px;}}
+@media(max-width:400px){.mod-grid{grid-template-columns:1fr;}}
+.board{border:1px solid var(--border);background:var(--panel-2);
+  padding:14px 16px 12px;min-width:0;}
+.board h4{display:flex;align-items:center;gap:9px;
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  color:var(--muted);letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:10px;min-width:0;}
+.board h4 .bt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.board h4 .bu{margin-left:auto;font-size:9px;letter-spacing:.05em;flex:none;}
+.board ol{list-style:none;}
+.board li{display:flex;align-items:center;gap:8px;padding:5px 0;
+  border-bottom:1px solid var(--border);font-size:13px;cursor:pointer;}
+.board li:last-child{border-bottom:none;}
+.board li:hover .nn{text-decoration:underline;}
+.rk{font-family:var(--font-mono);font-size:10px;color:var(--muted);
+  width:20px;flex:none;}
+.nm{flex:1;display:flex;align-items:center;gap:8px;min-width:0;}
+.nm img{width:20px;height:20px;image-rendering:pixelated;
+  background:#0b0e12;flex:none;}
+.nn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vl{font-family:var(--font-mono);font-size:12px;color:var(--accent);
+  font-variant-numeric:tabular-nums;flex:none;}
+.empty{color:var(--muted);font-size:13px;}
+
+/* ---- player list ---- */
+.player-tools{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px;}
+.psearch{flex:1;min-width:180px;background:var(--panel-2);
+  border:1px solid var(--border);color:var(--ink);
+  padding:10px 13px;font-size:14px;font-family:inherit;outline:none;}
+.psearch:focus{border-color:var(--accent);}
+.profile-tiles{display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;}
+.ptile{border:1px solid var(--border);background:var(--panel-2);
+  padding:14px 16px;display:flex;gap:12px;align-items:center;
+  cursor:pointer;text-align:left;width:100%;appearance:none;
+  font-family:inherit;color:var(--ink);
+  transition:border-color .15s;}
+.ptile:hover{border-color:var(--muted);}
+.ptile.sel{border-color:var(--accent);}
+.ptile img.av{width:40px;height:40px;image-rendering:pixelated;
+  background:#0b0e12;border:1px solid var(--border);flex:none;}
+.ptile .pname{font-weight:700;font-size:14px;word-break:break-word;}
+.ptile .pmeta{font-family:var(--font-mono);font-size:10.5px;
+  color:var(--muted);margin-top:2px;}
+
+/* ---- profile ---- */
+.prof-head{display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  border:1px solid var(--border);background:var(--panel);
+  padding:18px 20px;margin:0 0 18px;}
+.prof-head img.av{width:64px;height:64px;image-rendering:pixelated;
+  background:#0b0e12;border:1px solid var(--border);flex:none;}
+.prof-id .pn{font-size:20px;font-weight:700;word-break:break-word;}
+.prof-id .pm{font-family:var(--font-mono);font-size:11.5px;
+  color:var(--muted);margin-top:3px;}
+.prof-actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;}
+
+.stat-chips{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;}
+.sc{border:1px solid var(--border);background:var(--panel-2);
+  padding:12px 16px;min-width:110px;flex:1;}
+.sc .num{font-size:22px;font-weight:700;color:var(--accent);
+  font-variant-numeric:tabular-nums;}
+.sc .lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted);
+  margin-top:2px;}
+
+.sec-label{font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;
+  margin:26px 0 12px;display:flex;align-items:center;gap:10px;}
+.sec-label::after{content:"";flex:1;height:1px;background:var(--border);}
+
+.deep-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:12px;}
+.deep-card{border:1px solid var(--border);background:var(--panel-2);
+  padding:12px 14px;min-width:0;}
+.deep-card h5{display:flex;align-items:center;gap:8px;
+  font-family:var(--font-mono);font-size:10.5px;font-weight:600;
+  color:var(--muted);text-transform:uppercase;letter-spacing:.06em;
+  margin-bottom:8px;}
+.deep-card ol{list-style:none;}
+.deep-card li{display:flex;align-items:center;gap:8px;padding:4px 0;
+  font-size:12.5px;border-bottom:1px solid var(--border);}
+.deep-card li:last-child{border-bottom:none;}
+.deep-card .dnm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;}
+.deep-card .dvl{font-family:var(--font-mono);font-size:11px;
+  color:var(--accent);flex:none;}
+
+/* live events */
+.ev-list li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;}
+.ev-when{font-family:var(--font-mono);font-size:10px;color:var(--muted);
+  flex:none;}
+.ev-list b{color:var(--accent);}
+.ev-h{font-family:var(--font-mono);font-size:9.5px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.05em;padding-top:6px;}
+
+/* ---- compare ---- */
+.cmp-hero{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;
+  align-items:center;border:1px solid var(--border);background:var(--panel);
+  padding:18px 20px;margin:0 0 8px;}
+.cmp-hero .side{display:flex;gap:12px;align-items:center;min-width:0;}
+.cmp-hero .side img{width:48px;height:48px;image-rendering:pixelated;
+  background:#0b0e12;border:1px solid var(--border);flex:none;}
+.cmp-hero .side.right{justify-content:flex-end;text-align:right;}
+.cmp-hero .vs{font-family:var(--font-pixel);font-size:14px;color:var(--muted);}
+.cmp-note{font-family:var(--font-mono);font-size:11.5px;margin:0 0 6px;
+  color:var(--muted);}
+.cmp-table{width:100%;border-collapse:collapse;font-size:13.5px;}
+.cmp-table th,.cmp-table td{padding:8px 10px;border-bottom:1px solid var(--border);
+  text-align:right;vertical-align:middle;white-space:nowrap;}
+.cmp-table th{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.05em;}
+.cmp-table td:first-child,.cmp-table th:first-child{text-align:left;}
+.cmp-table td:first-child{white-space:normal;}
+.cmp-table .win{color:var(--accent);font-weight:700;}
+.cmp-table .dim{color:var(--muted);}
+.cmp-table .mk{color:var(--accent);font-family:var(--font-mono);}
+@media(max-width:560px){
+  .cmp-hero{grid-template-columns:1fr;justify-items:center;}
+  .cmp-hero .side.right{justify-content:flex-start;text-align:left;
+    flex-direction:row-reverse;}
+}
+
+.updated{font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  margin-top:24px;}
+.loading{color:var(--muted);font-family:var(--font-mono);font-size:12px;
+  padding:30px 0;}
+
+/* ---- mobile header ---- */
+@media(max-width:720px){
+  .nav{gap:10px;height:56px;}
+  .wordmark{font-size:10px;}
+  .userarea{gap:6px;margin-left:auto;min-width:0;}
+  .userarea .chip{padding:4px 8px 4px 5px;font-size:12px;}
+  .userarea .chip img{width:22px;height:22px;}
+  .userarea .linkish{padding:6px 7px;font-size:12px;}
+  .userarea .chip span{max-width:70px;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;}
+  .userarea a[href="/"]{display:none;}
+  .userarea .linkish{white-space:nowrap;}
+  .userarea{flex-wrap:nowrap;overflow:hidden;}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap nav">
+    <a class="wordmark" href="/">MC.<em>MAX-KUEHN</em>.COM</a>
+    <nav class="userarea" id="userArea"><span class="chip">&nbsp;</span></nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="toast" id="toast"></div>
+
+  <div class="hero">
+    <a class="back-link" href="/">← Zurück zur Übersicht</a>
+    <h1>Statistiken</h1>
+    <p class="sub">Ingame-Zahlen unserer Spieler — live aus der Welt,
+      archiviert auf dem Server.</p>
+  </div>
+
+  <div class="grid-main">
+
+    <aside class="sidebar">
+      <h3 class="sb-title">Kategorien</h3>
+      <div class="cat-scroll" id="catScroll"></div>
+    </aside>
+
+    <section>
+      <div class="view-head" id="viewHead"></div>
+      <div id="viewBody"></div>
+      <p class="updated" id="updatedLine"></p>
+    </section>
+
+  </div>
+</main>
+
+<footer class="wrap">
+  <span>&copy; <span id="yr"></span> FriendlyFire · Minecraft-Community</span>
+  <span class="mono-sm" style="color:var(--muted)">statistik-bereich ·
+    <button class="linkish" id="logoutBtn" style="padding:0">Abmelden</button></span>
+</footer>
+
+<script>
+'use strict';
+const qs=s=>document.querySelector(s);
+const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;',
+  '>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const avatarImg=(name,cls)=>`<img ${cls?`class="${cls}" `:''}`+
+  `src="/avatar/${encodeURIComponent(name)}.png" alt="" `+
+  `onerror="this.style.visibility='hidden'">`;
+
+const FALLBACK_ICON='📊';
+const ICON_EMOJI={
+  'minecraft:experience_bottle':'🧪','minecraft:clock':'🕐','minecraft:wheat':'🌾',
+  'minecraft:fishing_rod':'🎣','minecraft:emerald':'💚','minecraft:enchanted_book':'📖',
+  'minecraft:red_bed':'🛏️','minecraft:rabbit_foot':'🐇','minecraft:compass':'🧭',
+  'minecraft:leather_boots':'👟','minecraft:sugar':'🏃','minecraft:heart_of_the_sea':'🌊',
+  'minecraft:oak_boat':'⛵','minecraft:elytra':'🕊️','minecraft:saddle':'🐎',
+  'minecraft:happy_ghast_spawn_egg':'👻','minecraft:nautilus_shell':'🐚',
+  'minecraft:minecart':'🛒','minecraft:warped_fungus_on_a_stick':'🍄',
+  'minecraft:diamond_pickaxe':'⛏️','minecraft:iron_ore':'⛓️','minecraft:diamond':'💎',
+  'minecraft:iron_ingot':'🔩','minecraft:ancient_debris':'🗿','minecraft:oak_log':'🪵',
+  'minecraft:sculk':'🔮','minecraft:netherite_scrap':'🔧','minecraft:bone':'💀',
+  'minecraft:zombie_head':'🧟','minecraft:creeper_head':'💥','minecraft:skeleton_skull':'☠️',
+  'minecraft:echo_shard':'📡','minecraft:iron_sword':'⚔️','minecraft:cooked_chicken':'🍗',
+  'minecraft:ender_pearl':'🫧','minecraft:blaze_rod':'🔥',
+  'minecraft:wither_skeleton_skull':'🖤','minecraft:dragon_egg':'🐉',
+  'minecraft:nether_star':'⭐','minecraft:elder_guardian_spawn_egg':'🐟',
+};
+// Renders a mod icon id (minecraft:<name>) as a crisp vanilla-texture
+// sprite from /assets/icons/. Emoji fallback if the file is missing.
+function iconTag(icon,size){
+  const id=String(icon||'').replace(/^minecraft:/,'');
+  const fb=ICON_EMOJI[icon]||FALLBACK_ICON;
+  if(!id){return `<span class="${size}-emo">${fb}</span>`;}
+  return `<img class="ic ${size}" src="/assets/icons/${encodeURIComponent(id)}.png" alt="" `
+      +`loading="lazy" onerror="this.outerHTML='<span class=&quot;${size}-emo&quot;>${fb}</span>'">`;
+}
+
+const CAT_TITLE_DE={
+  advancements:'Fortschritte',life:'Leben & Alltag',exploration:'Reisen',
+  mining:'Mining',deaths:'Tode',combat:'Kampf',more:'Mehr Statistiken',
+  misc:'Sonstiges',
+};
+const BOARD_TITLE_DE={
+  'advancements':'Fortschritte','play-time':'Spielzeit','animals-bred':'Gezüchtet',
+  'fish-caught':'Gefangen','villager-trades':'Dorfhandel','items-enchanted':'Verzaubert',
+  'sleeps':'Geschlafen','jumps':'Sprünge','distance-total':'Reise total',
+  'distance-walk-sprint':'Laufen+Sprint','distance-walk':'Gehen','distance-sprint':'Sprint',
+  'distance-swim':'Schwimmen','distance-boat':'Boot','distance-elytra':'Elytra',
+  'distance-horse':'Pferd','distance-happy-ghast':'Happy Ghast','distance-nautilus':'Nautilus',
+  'distance-minecart':'Lore','distance-strider':'Strider','chests-opened':'Kisten geöffnet',
+  'blocks-mined':'Blöcke abgebaut','ores':'Erze','diamonds-mined':'Diamanten',
+  'iron-mined':'Iron','ancient-debris':'Ancient Debris','logs-mined':'Holz',
+  'sculk-mined':'Sculk','tools-broken':'Werkzeuge zerbrochen','deaths':'Tode',
+  'killed-by-zombie':'Tod durch Zombie','killed-by-creeper':'Tod durch Creeper',
+  'killed-by-skeleton':'Tod durch Skelett','killed-by-warden':'Tod durch Warden',
+  'hostile-kills':'Monster-Kills','farm-kills':'Farm-Kills','zombies':'Zombies',
+  'skeletons':'Skelette','creepers':'Creepers','endermen':'Endermen','blazes':'Blazes',
+  'wither-skeletons':'Wither-Skelette','ender-dragon':'Enderdrache','wither':'Wither',
+  'warden':'Warden','elder-guardian':'Elder Guardian','bosses':'Boss-Kills',
+  'raids-won':'Raids gewonnen','player-kills':'Spieler-Kills','damage-dealt':'Schaden verteilt',
+  'kills-per-hour':'Kills/h',
+  'fly-distance':'Geflogen','climb-distance':'Geklettert',
+  'crouch-distance':'Geduckt (Weg)','fall-distance':'Gefallen',
+  'walk-water-distance':'Auf Wasser gelaufen','dive-distance':'Unterwasser gegangen',
+  'pig-distance':'Schwein geritten','damage-absorbed':'Schaden absorbiert',
+  'damage-blocked':'Von Schild geblockt','damage-taken':'Schaden genommen',
+  'damage-resisted':'Schaden widerstanden','damage-dealt-absorbed':'Verteilt (absorbiert)',
+  'damage-dealt-resisted':'Verteilt (widerstanden)','mob-kills':'Mob-Kills',
+  'bells-rung':'Glocken geläutet','cake-eaten':'Kuchen gegessen',
+  'records-played':'Schallplatten gespielt','noteblocks-played':'Notenblöcke gespielt',
+  'noteblocks-tuned':'Notenblöcke gestimmt','flowers-potted':'Blumen eingepflanzt',
+  'barrels-opened':'Fässer geöffnet','shulkers-opened':'Shulker geöffnet',
+  'enderchests-opened':'Endertruhen geöffnet','trapped-chests-triggered':'Fallenkisten ausgelöst',
+  'cauldrons-filled':'Kessel gefüllt','cauldrons-used':'Kessel benutzt',
+  'armor-cleaned':'Rüstung gereinigt','banners-cleaned':'Banner gereinigt',
+  'shulkers-cleaned':'Shulker gereinigt','dispensers-inspected':'Werfer geprüft',
+  'droppers-inspected':'Spender geprüft','hoppers-inspected':'Trichter geprüft',
+  'anvil-uses':'Amboss-Nutzung','beacon-uses':'Leuchtfeuer-Nutzung',
+  'blast-furnace-uses':'Schmelzofen-Nutzung','brewing-stands-used':'Braustände benutzt',
+  'campfires-used':'Lagerfeuer benutzt','cartography-uses':'Kartentisch-Nutzung',
+  'crafting-uses':'Werkbank-Nutzung','furnace-uses':'Ofen-Nutzung',
+  'grindstone-uses':'Schleifstein-Nutzung','lectern-uses':'Lesepult-Nutzung',
+  'loom-uses':'Webstuhl-Nutzung','smithing-uses':'Schmiedetisch-Nutzung',
+  'smoker-uses':'Räucherofen-Nutzung','stonecutter-uses':'Steinmetz-Nutzung',
+  'raids-triggered':'Raids ausgelöst','targets-hit':'Zielscheiben getroffen',
+  'straw-beds-slept':'Strohbetten','sneak-time':'Schleichzeit',
+  'sessions-played':'Sessions gespielt','time-since-death':'Zeit seit Tod',
+  'time-since-rest':'Zeit seit Ruhe','time-in-world':'Zeit in der Welt',
+  'villager-talks':'Villager-Gespräche','villager-deals':'Villager-Handel',
+};
+const SECTION_DE={
+  mined:'Meist abgebaut',crafted:'Am meisten gecraftet',
+  killed:'Meiste Kills',killed_by:'Oftst getötet von',
+  used:'Meist benutzt',broken:'Meist zerbrochen',
+  picked_up:'Meist aufgesammelt',dropped:'Meist fallen gelassen',
+  custom:'Weitere Zahlen',
+};
+const CUSTOM_LABEL_DE={
+  'minecraft:jump':'Sprünge','minecraft:animals_bred':'Tiere gezüchtet',
+  'minecraft:sleep_in_bed':'Im Bett geschlafen','minecraft:walk_one_cm':'Gegangen',
+  'minecraft:sprint_one_cm':'Gesprintet','minecraft:swim_one_cm':'Geschwommen',
+  'minecraft:walk_under_water_one_cm':'Unterwasser gegangen',
+  'minecraft:boat_one_cm':'Boot gefahren','minecraft:aviate_one_cm':'Geflogen',
+  'minecraft:horse_one_cm':'Geritten','minecraft:pig_one_cm':'Schwein geritten',
+  'minecraft:strider_one_cm':'Strider geritten','minecraft:minecart_one_cm':'Lore gefahren',
+  'minecraft:climb_one_cm':'Geklettert','minecraft:crouch_one_cm':'Geduckt',
+  'minecraft:fall_one_cm':'Gefallen','minecraft:deaths':'Tode',
+  'minecraft:damage_dealt':'Schaden verteilt','minecraft:damage_taken':'Schaden genommen',
+  'minecraft:damage_resisted':'Schaden widerstanden',
+  'minecraft:damage_blocked_by_shield':'Von Schild geblockt',
+  'minecraft:mobs_killed':'Mobs getötet','minecraft:player_kills':'Spieler getötet',
+  'minecraft:fish_caught':'Fische gefangen','minecraft:enchant_item':'Verzaubert',
+  'minecraft:open_chest':'Kisten geöffnet','minecraft:open_barrel':'Fässer geöffnet',
+  'minecraft:open_shulker_box':'Shulkerkisten geöffnet',
+  'minecraft:open_enderchest':'Endertruhen geöffnet',
+  'minecraft:crafting_table_interaction':'Werkbank genutzt',
+  'minecraft:bell_ring':'Glocken geläutet','minecraft:traded_with_villagers':'Handel',
+  'minecraft:talked_to_villager':'Villager angesprochen',
+  'minecraft:eat_cake_slice':'Kuchen gegessen','minecraft:play_records':'Platten gespielt',
+  'minecraft:pot_flower':'Blumen gepflanzt','minecraft:leave_game':'Spiel verlassen',
+  'minecraft:time_since_death':'Zeit seit letztem Tod',
+  'minecraft:time_since_rest':'Zeit seit letztem Schlaf',
+  'minecraft:play_time_ms':'Spielzeit (ms)','minecraft:total_world_time':'Zeit in Welt',
+};
+function itemName(id){
+  if(CUSTOM_LABEL_DE[id]){return CUSTOM_LABEL_DE[id];}
+  const raw=String(id||'').replace(/^minecraft:/,'').replace(/_/g,' ');
+  return raw.charAt(0).toUpperCase()+raw.slice(1);
+}
+const boardTitle=id=>BOARD_TITLE_DE[id]||itemName(id);
+
+/* ============================ state ============================ */
+let DATA=null;             // /api/stats/ingame payload
+let ACTIVE_CAT=null;
+let VIEW='boards';          // boards | players | profile | compare
+let CURRENT_NAME=null;      // profile being viewed
+let CMP_MODE=false;         // picking players for comparison
+let CMP_FIRST=null;         // first picked name
+let CMP_A=null,CMP_B=null;  // compared profiles
+const PROF_CACHE={};        // name -> profile payload
+
+/* ============================ api ============================ */
+async function api(method,path){
+  let lastErr=null;
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const r=await fetch(path,{method,credentials:'same-origin',cache:'no-store'});
+      if(r.status===401){location.href='/login';throw new Error('anon');}
+      if(!r.ok){throw new Error('http-'+r.status);}
+      const text=await r.text();
+      if(!text.trim().startsWith('{')){throw new Error('html-response');}
+      return JSON.parse(text);
+    }catch(err){
+      if(err&&err.message==='anon') throw err;
+      lastErr=err;
+      if(attempt===0){await new Promise(ok=>setTimeout(ok,1200));}
+    }
+  }
+  throw lastErr||new Error('api-failed');
+}
+async function loadProfile(name){
+  if(PROF_CACHE[name])return PROF_CACHE[name];
+  const p=await api('GET','/api/stats/player/'+encodeURIComponent(name));
+  PROF_CACHE[name]=p;
+  return p;
+}
+function toast(msg){
+  const t=qs('#toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ============================ chrome ============================ */
+function paintHeader(me){
+  qs('#userArea').innerHTML=`
+    <a class="chip" href="/dashboard.html">
+      ${avatarImg(me.nickname)}
+      <span>${esc(me.nickname)}</span>
+    </a>
+    <a class="linkish" href="/">Übersicht</a>
+    ${me.role==='admin'?'<a class="linkish" href="/admin">Admin</a>':''}
+    <button class="linkish" id="navLogout" style="padding:8px 10px">Logout</button>`;
+  qs('#navLogout').addEventListener('click',async ()=>{
+    try{await api('POST','/api/logout');}catch(_){}
+    location.href='/login';
+  });
+}
+function paintCategories(){
+  const el=qs('#catScroll');
+  const cats=(DATA.categories||[]).map(c=>({
+    id:c.id,icon:c.icon,count:(c.boards||[]).length}));
+  el.innerHTML=cats.map(c=>`
+<button class="sb-cat${c.id===ACTIVE_CAT&&VIEW==='boards'?' active':''}"
+        data-cat="${esc(c.id)}">
+  ${iconTag(c.icon,'sm')}
+  <span>${esc(CAT_TITLE_DE[c.id]||c.id)}</span>
+  <span class="sb-count">${c.count}</span>
+</button>`).join('');
+}
+
+/* ============================ router ============================ */
+function render(){
+  paintCategories();
+  const head=qs('#viewHead'),body=qs('#viewBody');
+  if(VIEW==='boards')renderBoards(head,body);
+  else if(VIEW==='players')renderPlayers(head,body);
+  else if(VIEW==='profile')renderProfile(head,body);
+  else if(VIEW==='compare')renderCompare(head,body);
+}
+
+/* ============================ leaderboards ============================ */
+function renderBoards(head,body){
+  const cat=(DATA.categories||[]).find(c=>c.id===ACTIVE_CAT);
+  head.innerHTML=`
+    <span class="vt">${esc(CAT_TITLE_DE[ACTIVE_CAT]||ACTIVE_CAT||'—')}</span>
+    <button class="pa-btn" id="toPlayers">👤 Spieler &amp; Profile</button>`;
+  qs('#toPlayers').addEventListener('click',()=>gotoPlayers());
+  if(!cat){body.innerHTML='<p class="empty">// keine kategorien</p>';return;}
+  body.innerHTML=`<div class="mod-grid">
+${(cat.boards||[]).map(b=>{
+  const leaders=(b.leaders||[]);
+  return `
+  <article class="board">
+    <h4>${iconTag(b.icon,'md')}<span class="bt">${esc(boardTitle(b.id))}</span>
+        <span class="bu">${esc(b.unit||'')}</span></h4>
+    ${leaders.length?`<ol>${leaders.map((r,i)=>`
+    <li data-player="${esc(r.name)}" title="Profil öffnen">
+      <span class="rk">${i+1}</span>
+      <span class="nm">${avatarImg(r.name)}<span class="nn">${esc(r.name)}</span></span>
+      <span class="vl">${esc(r.display??r.value)}</span>
+    </li>`).join('')}</ol>`
+  :'<p class="empty">noch keine daten</p>'}
+  </article>`;
+}).join('')}
+</div>`;
+  qsa('[data-player]',body).forEach(li=>
+    li.addEventListener('click',()=>openProfile(li.dataset.player)));
+}
+
+/* ============================ player list ============================ */
+function gotoPlayers(){
+  VIEW='players';CMP_MODE=false;CMP_FIRST=null;
+  history.replaceState(null,'','#spieler');
+  render();
+}
+function renderPlayers(head,body){
+  const players=(DATA.profiles||[]).slice().sort((a,b)=>
+    (b.playHours||0)-(a.playHours||0));
+  head.innerHTML=`
+    <span class="vt">Spieler (${players.length})</span>
+    <button class="pa-btn" id="toBoards">🏆 Leaderboards</button>`;
+  qs('#toBoards').addEventListener('click',()=>{
+    VIEW='boards';history.replaceState(null,'','#'+(ACTIVE_CAT||''));render();
+  });
+  body.innerHTML=`
+    <div class="player-tools">
+      <input class="psearch" id="pSearch" type="text"
+             placeholder="Spieler suchen …" autocomplete="off">
+      <button class="pa-btn${CMP_MODE?' on':''}" id="cmpToggle">
+        ${CMP_MODE?(CMP_FIRST?('① '+esc(CMP_FIRST)+' gewählt — zweiten wählen'):'Ersten Spieler wählen …'):'⚖ Vergleichen'}
+      </button>
+    </div>
+    <div class="profile-tiles" id="pTiles"></div>`;
+  const tileHtml=p=>`
+<button class="ptile${CMP_MODE&&CMP_FIRST===p.name?' sel':''}"
+        data-player="${esc(p.name)}">
+  ${avatarImg(p.name,'av')}
+  <div>
+    <div class="pname">${esc(p.name)}</div>
+    <div class="pmeta">${Math.round(p.playHours*100)/100} h ·
+      ${p.advancementsDone}/${p.advancementsTotal} Fortschritte</div>
+  </div>
+</button>`;
+  const paint=q=>{
+    const list=q?players.filter(p=>
+      p.name.toLowerCase().includes(q.toLowerCase())):players;
+    qs('#pTiles').innerHTML=list.length?list.map(tileHtml).join('')
+      :'<p class="empty">// niemand gefunden</p>';
+    qsa('[data-player]',qs('#pTiles')).forEach(el=>
+      el.addEventListener('click',()=>tileClick(el.dataset.player)));
+  };
+  paint('');
+  qs('#pSearch').addEventListener('input',e=>paint(e.target.value));
+  qs('#pSearch').focus({preventScroll:true});
+  qs('#cmpToggle').addEventListener('click',()=>{
+    if(CMP_MODE){CMP_MODE=false;CMP_FIRST=null;render();}
+    else{CMP_MODE=true;CMP_FIRST=null;
+      toast('Wähle zwei Spieler zum Vergleichen.');render();}
+  });
+}
+function tileClick(name){
+  if(CMP_MODE){
+    if(!CMP_FIRST){CMP_FIRST=name;render();}
+    else openCompare(CMP_FIRST,name);
+    return;
+  }
+  openProfile(name);
+}
+
+/* ============================ profile ============================ */
+async function openProfile(name){
+  qs('#viewBody').innerHTML='<p class="loading">// lade profil …</p>';
+  VIEW='profile';CURRENT_NAME=name;
+  history.replaceState(null,'','#spieler='+encodeURIComponent(name));
+  try{
+    await loadProfile(name);
+    render();
+  }catch(err){
+    if(err.message==='anon')return;
+    qs('#viewBody').innerHTML=
+      `<div class="panel"><h2>Profil nicht verfügbar</h2>
+       <p class="desc">(${esc(err.message)})</p></div>`;
+  }
+}
+function renderProfile(head,body){
+  const p=PROF_CACHE[CURRENT_NAME];
+  if(!p){body.innerHTML='<p class="empty">// profil nicht geladen</p>';return;}
+  head.innerHTML='';
+  const statEntries=Object.entries(p.stats||{})
+    .filter(([id,e])=>e&&e.value!=null);
+
+  const boardRow=b=>{
+    const e=(p.stats||{})[b.id];
+    if(!e||e.value==null)return '';
+    return `<li>${iconTag(b.icon,'sm')}
+      <span class="dnm">${esc(boardTitle(b.id))}</span>
+      <span class="dvl">${esc(e.display??e.value)}</span></li>`;
+  };
+
+  const deepCards=(()=>{
+    const deep=p.deep||{};
+    const order=['mined','crafted','killed','killed_by','used','broken',
+                 'picked_up','dropped','custom'];
+    const secs=order.concat(Object.keys(deep).filter(k=>!order.includes(k)))
+      .filter((v,i,a)=>a.indexOf(v)===i)
+      .filter(k=>Array.isArray(deep[k])&&deep[k].length);
+    if(!secs.length)return '';
+    const cards=secs.map(sec=>{
+      const rows=deep[sec].slice(0,10).map(e=>`
+        <li>${iconTag(e.id,'sm')}
+          <span class="dnm">${esc(itemName(e.id))}</span>
+          <span class="dvl">${esc(e.display??e.value)}</span></li>`).join('');
+      return `<div class="deep-card">
+        <h5>${esc(SECTION_DE[sec]||sec)}</h5>
+        <ol>${rows}</ol>
+      </div>`;
+    }).join('');
+    return `<div class="sec-label">Top-Listen</div>
+      <div class="deep-grid">${cards}</div>`;
+  })();
+
+  body.innerHTML=`
+  <div class="prof-head">
+    ${avatarImg(p.name,'av')}
+    <div class="prof-id">
+      <div class="pn">${esc(p.name)}</div>
+      <div class="pm">${Math.round(p.playHours*100)/100} h Spielzeit ·
+        ${p.advancementsDone}/${p.advancementsTotal} Fortschritte</div>
+    </div>
+    <div class="prof-actions">
+      <button class="pa-btn" id="pfBack">← Zurück</button>
+      <button class="pa-btn" id="pfCompare">⚖ Vergleichen</button>
+    </div>
+  </div>
+
+  <div class="stat-chips">
+    <div class="sc"><div class="num">${Math.round(p.playHours*100)/100}</div>
+      <div class="lbl">STUNDEN</div></div>
+    <div class="sc"><div class="num">${p.advancementsDone}<span
+      style="color:var(--muted);font-size:14px">/${p.advancementsTotal}</span></div>
+      <div class="lbl">FORTSCHRITTE</div></div>
+    <div class="sc"><div class="num">${statEntries.length}</div>
+      <div class="lbl">STATS GE_TRACKT</div></div>
+  </div>
+
+  <div class="sec-label">Alle Statistiken</div>
+  <div class="deep-grid">
+  ${(DATA.categories||[]).map(cat=>{
+    const rows=(cat.boards||[]).map(boardRow).filter(Boolean).join('');
+    if(!rows)return '';
+    return `<div class="deep-card">
+      <h5>${iconTag(cat.icon,'sm')}${esc(CAT_TITLE_DE[cat.id]||cat.id)}</h5>
+      <ol>${rows}</ol>
+    </div>`;
+  }).join('')}
+  </div>
+
+  ${deepCards}
+
+  <div id="liveEventsSlot"></div>
+
+  <p class="updated">// archiv-stand: ${
+    p.fetchedAt?new Date(p.fetchedAt*1000).toLocaleString('de-DE'):'—'}</p>`;
+
+  loadLiveEvents(p.name);
+
+  qs('#pfBack').addEventListener('click',()=>gotoPlayers());
+  qs('#pfCompare').addEventListener('click',()=>{
+    CMP_MODE=true;CMP_FIRST=p.name;
+    toast('Vergleichspartner wählen:');
+    gotoPlayersKeepPick();
+  });
+}
+function gotoPlayersKeepPick(){
+  VIEW='players';
+  history.replaceState(null,'','#spieler');  render();
+}
+
+/* -------- live events (MCStats-to-SQL mod, optional) -------- */
+const EVENT_KIND_DE={
+  pvp_kill:'PvP-Kill',death:'Tod',join:'Beigetreten',leave:'Verlassen',
+};
+async function loadLiveEvents(name){
+  const slot=qs('#liveEventsSlot');
+  if(!slot)return;
+  slot.innerHTML='';
+  let pvp,evs;
+  try{
+    [pvp,evs]=await Promise.all([
+      api('GET','/api/stats/pvp/'+encodeURIComponent(name)),
+      api('GET','/api/stats/live-events?player='+encodeURIComponent(name)
+          +'&limit=25'),
+    ]);
+  }catch(_){return;}   // backend without the endpoints: stay silent
+  if(!pvp.available&&!evs.available)return;   // mod not feeding yet
+
+  const pvpRecs=(pvp.records||[]);
+  const kills=pvpRecs.filter(r=>r.side==='kills');
+  const deathsBy=pvpRecs.filter(r=>r.side==='deaths_by');
+
+  const oppRow=r=>`
+    <li>${avatarImg(r.opponentName)}
+      <span class="dnm">${esc(r.opponentName)}</span>
+      <span class="dvl">${r.count}×</span></li>`;
+
+  const evRow=e=>{
+    const when=new Date(e.ts*1000).toLocaleDateString('de-DE');
+    let txt='';
+    if(e.kind==='pvp_kill'){
+      const wpn=e.detail&&e.detail!=='hands'
+        ?' ('+esc(String(e.detail).replace(/^item\.minecraft\./,''))+')':'';
+      txt='⚔️ hat <b>'+esc(e.opponentName||'?')+'</b> getötet'+wpn;
+    }else if(e.kind==='death'){
+      txt=`☠️ gestorben (${esc(String(e.detail||'').replace(/^minecraft:/,''))})`;
+    }else if(e.kind==='join'){
+      txt='➡️ gekommen';
+    }else{
+      txt='⬅️ gegangen';
+    }
+    return `<li><span class="ev-when">${when}</span> ${txt}</li>`;
+  };
+
+  slot.innerHTML=`
+  <div class="sec-label">PvP &amp; Ereignisse</div>
+  <div class="deep-grid">
+    ${pvpRecs.length?`
+    <div class="deep-card">
+      <h5>⚔️ Versus-Liste</h5>
+      <ol>
+        ${kills.length?`<li class="ev-h"><span class="dnm">Getötet</span></li>`:''}
+        ${kills.map(oppRow).join('')}
+        ${deathsBy.length?`<li class="ev-h"><span class="dnm">Getötet von</span></li>`:''}
+        ${deathsBy.map(oppRow).join('')}
+      </ol>
+    </div>`:''}
+    <div class="deep-card">
+      <h5>📜 Letzte Ereignisse</h5>
+      ${(evs.events||[]).length
+        ?`<ol class="ev-list">${(evs.events||[]).map(evRow).join('')}</ol>`
+        :'<p class="empty">noch keine ereignisse</p>'}
+    </div>
+  </div>`;
+}
+
+/* ============================ compare ============================ */
+async function openCompare(a,b){
+  qs('#viewBody').innerHTML='<p class="loading">// vergleiche …</p>';
+  VIEW='compare';CMP_MODE=false;CMP_FIRST=null;
+  history.replaceState(null,'',
+    '#vergleich='+encodeURIComponent(a)+'-gegen-'+encodeURIComponent(b));
+  try{
+    CMP_A=await loadProfile(a);
+    CMP_B=await loadProfile(b);
+    render();
+  }catch(err){
+    if(err.message==='anon')return;
+    qs('#viewBody').innerHTML=
+      `<div class="panel"><h2>Vergleich nicht verfügbar</h2>
+       <p class="desc">(${esc(err.message)})</p></div>`;
+  }
+}
+function renderCompare(head,body){
+  const a=CMP_A,b=CMP_B;
+  if(!a||!b){body.innerHTML='<p class="empty">// nichts zu vergleichen</p>';return;}
+  head.innerHTML=`
+    <span class="vt">Vergleich</span>
+    <button class="pa-btn" id="cmpBack">← Spieler</button>`;
+  qs('#cmpBack').addEventListener('click',()=>gotoPlayers());
+
+  const meta={};
+  (DATA.categories||[]).forEach(c=>(c.boards||[]).forEach(bb=>{
+    meta[bb.id]={icon:bb.icon,cat:c.id,lowerWins:!!bb.lowerWins};
+  }));
+  const ids=new Set([...Object.keys(a.stats||{}),...Object.keys(b.stats||{})]);
+
+  const rows=[...ids].sort().map(id=>{
+    const ea=(a.stats||{})[id],eb=(b.stats||{})[id];
+    const va=ea?Number(ea.value):NaN,vb=eb?Number(eb.value):NaN;
+    const lowerWin=meta[id]?.lowerWins||/^killed-by/.test(id)||id==='deaths';
+    let wa=false,wb=false,mk='';
+    if(!isNaN(va)&&!isNaN(vb)&&va!==vb){
+      if(lowerWin){wa=va<vb;wb=vb<va;}
+      else{wa=va>vb;wb=vb>va;}
+    }
+    if(wa){mk='◀';}
+    if(wb){mk='▶';}
+    const dsp=e=>e?(e.display??e.value):'—';
+    return `<tr>
+      <td>${iconTag(meta[id]?.icon,'sm')} ${esc(boardTitle(id))}</td>
+      <td class="${wa?'win':'dim'}">${esc(dsp(ea))}</td>
+      <td class="mk">${mk}</td>
+      <td class="${wb?'win':'dim'}">${esc(dsp(eb))}</td>
+    </tr>`;
+  }).join('');
+
+  const hrs=Math.round(((a.playHours||0)-(b.playHours||0))*100)/100;
+  const adv=(a.advancementsDone||0)-(b.advancementsDone||0);
+
+  body.innerHTML=`
+  <div class="cmp-hero">
+    <div class="side">
+      ${avatarImg(a.name)}
+      <div><div style="font-weight:700;font-size:16px">${esc(a.name)}</div>
+        <div class="pmeta" style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">
+          ${a.advancementsDone} Fortschritte · ${Math.round(a.playHours*100)/100} h</div></div>
+    </div>
+    <div class="vs">VS</div>
+    <div class="side right">
+      <div><div style="font-weight:700;font-size:16px">${esc(b.name)}</div>
+        <div class="pmeta" style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">
+          ${b.advancementsDone} Fortschritte · ${Math.round(b.playHours*100)/100} h</div></div>
+      ${avatarImg(b.name)}
+    </div>
+  </div>
+  <p class="cmp-note">// Spielzeit ${hrs>=0?'+':''}${hrs} h ·
+    Fortschritte ${adv>=0?'+':''}${adv} — zugunsten von ${esc(hrs>=0?a.name:b.name)}</p>
+  <div class="sec-label">Alle Statistiken</div>
+  <div class="scroll-x">
+  <table class="cmp-table">
+    <thead><tr><th>Statistik</th><th>${esc(a.name)}</th><th></th><th>${esc(b.name)}</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  </div>`;
+}
+
+/* ============================ boot ============================ */
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-cat]');
+  if(b){
+    ACTIVE_CAT=b.dataset.cat;VIEW='boards';
+    history.replaceState(null,'','#'+ACTIVE_CAT);
+    render();
+  }
+});
+
+(async()=>{
+  qs('#yr').textContent=new Date().getFullYear();
+  qs('#updatedLine').textContent='// verbinde …';
+  let done=false;
+  for(let i=0;i<4&&!done;i++){
+    try{
+      await new Promise(ok=>setTimeout(ok,i===0?1200:2500*i));
+      DATA=await api('GET','/api/stats/ingame');
+      done=true;break;
+    }catch(err){
+      if(err&&err.message==='anon'){return;}
+      if(i===3){
+        if(!sessionStorage.getItem('ff_stats_healed')){
+          sessionStorage.setItem('ff_stats_healed','1');
+          location.reload();return;
+        }
+        qs('#updatedLine').textContent='// fehler: '+err.message;
+        qs('#viewBody').innerHTML=
+          '<div class="panel"><h2>Statistiken nicht verfügbar</h2>'+
+          '<p class="desc">('+esc(err.message)+') — Seite später neu laden.</p></div>';
+        return;
+      }
+    }
+  }
+  try{ paintHeader((await api('GET','/api/me')).user); }catch(_){}
+  const cats=DATA.categories||[];
+  const hash=decodeURIComponent(location.hash||'');
+  if(hash.startsWith('#spieler=')&&hash.length>'#spieler='.length){
+    VIEW='players';render();
+    openProfile(hash.slice('#spieler='.length));
+  }else if(hash.startsWith('#vergleich=')){
+    const pair=hash.slice('#vergleich='.length).split('-gegen-');
+    if(pair.length===2){VIEW='players';render();
+      openCompare(decodeURIComponent(pair[0]),decodeURIComponent(pair[1]));}
+    else{VIEW='boards';ACTIVE_CAT=cats[0]?.id??null;render();}
+  }else if(hash==='#spieler'){
+    gotoPlayers();
+  }else{
+    VIEW='boards';
+    ACTIVE_CAT=cats.some(c=>c.id===hash)?hash:(cats[0]?.id??null);
+    render();
+  }
+
+  const lf=DATA.archive&&DATA.archive.lastFetch;
+  qs('#updatedLine').textContent=lf?
+    `// archiv-stand: ${new Date(lf*1000).toLocaleString('de-DE')} · aktualisiert sich automatisch`:
+    '// archiv-leer';
+
+  setInterval(async()=>{
+    try{
+      DATA=await api('GET','/api/stats/ingame');
+      Object.keys(PROF_CACHE).forEach(k=>delete PROF_CACHE[k]);
+      if(VIEW==='boards'||VIEW==='players')render();
+      else if(VIEW==='profile')openProfile(CURRENT_NAME);
+      else if(VIEW==='compare')openCompare(CMP_A.name,CMP_B.name);
+    }catch(_){}
+  },120000);
+})();
+</script>
+
+</body>
+</html>

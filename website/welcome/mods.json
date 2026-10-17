@@ -1,0 +1,309 @@
+{
+ "generatedFrom": "mods-26.3/CHECKLIST.md",
+ "categories": [
+  {
+   "id": "gameplay",
+   "label": "Gameplay",
+   "mods": [
+    {
+     "name": "FallingTree",
+     "jar": "FallingTree-26.3-25.jar",
+     "category": "gameplay",
+     "sideBadge": "Server macht's, Client egal",
+     "sideClass": "srv",
+     "tip": "Baumstamm hacken = ganzer Baum fällt (Werkzeug muss passen!). Sneaken = nur einzelner Block.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "RightClickHarvest",
+     "jar": "rightclickharvest-fabric-4.6.2+26.3.x.jar",
+     "category": "gameplay",
+     "sideBadge": "nur Server",
+     "sideClass": "srv",
+     "tip": "Ernten ohne Hacken: Reifetes Getreide einfach ANKLICKEN (rechtsklick) — Feld bleibt angesät, Werkzeug bleibt heil.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Death Backup",
+     "jar": "deathbackup-26.3.0-3.7.jar",
+     "category": "gameplay",
+     "sideBadge": "nur Server",
+     "sideClass": "srv",
+     "tip": "Nach dem Tod bleibt dein Inventar für einige Minuten am Sterbeort erhalten — hol es dir ruhig ab, kein Timer-Stress.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Just Mob Heads",
+     "jar": "justmobheads-26.3.0-9.5.jar",
+     "category": "gameplay",
+     "sideBadge": "nur Server",
+     "sideClass": "srv",
+     "tip": "Monster und Tiere droppen selten ihre Köpfe — Sammlerstücke für Trophäenräume!",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "No Enderman Grief",
+     "jar": "no-enderman-grief-v3.1.1.jar",
+     "category": "gameplay",
+     "sideBadge": "Server macht's, Client egal",
+     "sideClass": "srv",
+     "tip": "Endermen tragen keine Blöcke mehr weg — deine Bauwerke bleiben heil.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Elytra Trims",
+     "jar": "elytratrims-fabric-4.9.1+26.3.jar",
+     "category": "gameplay",
+     "sideBadge": "Client optional",
+     "sideClass": "opt",
+     "tip": "Elytren mit Trim-Ornamenten veredeln (Smithing Table) — reine Optik, keine Statwerte.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Image2Map",
+     "jar": "image2map-0.15.0+26.3.jar",
+     "category": "gameplay",
+     "sideBadge": "nur Server",
+     "sideClass": "srv",
+     "tip": "Bilder als Wandkarten: PNG in den Upload legen (Server-Team fragen) und mit dem Kartentisch auf eine Karte zaubern — ideal für Poster und Shopschilder.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "MasterCutter",
+     "jar": "mastercutter-1.8.0-mc26.3.jar",
+     "category": "gameplay",
+     "sideBadge": "Server macht's, Client egal",
+     "sideClass": "srv",
+     "tip": "Blätter abbauen mit der Axt fällen Bäume schneller — kombiniert perfekt mit FallingTree (ganzer Baum fällt, Blätter inklusive).",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Better Hanging Signs",
+     "jar": "better-hanging-signs-6.4.jar",
+     "category": "gameplay",
+     "sideBadge": "Server macht's, Client egal",
+     "sideClass": "srv",
+     "tip": "Hängeschilder können an Deckenhaken und unter Blöcken in mehr Ebenen platziert werden. Sneaken + rechtsklicken für diagonale Varianten.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Invis item frame",
+     "jar": "invis-item-frame-4.jar",
+     "category": "gameplay",
+     "sideBadge": "Server macht's, Client egal",
+     "sideClass": "srv",
+     "tip": "Itemrahmen unsichtbar schalten: Shears + rechtsklick auf den Rahmen. Nochmal klicken = wieder sichtbar.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Audaki Cart Engine (Faster Minecarts)",
+     "jar": "ACE_mc26.2-5.0.1.jar",
+     "category": "gameplay",
+     "sideBadge": "nur Server",
+     "sideClass": "srv",
+     "tip": "Schnellloren: Eisenkarren + Ofenkarren fahren deutlich schneller. Perfekt für lange Handelsstraßen — einfach normale Schienen nutzen, keine Spezialblöcke nötig.",
+     "clientHelp": "",
+     "disabled": false
+    }
+   ]
+  },
+  {
+   "id": "performance",
+   "label": "Performance",
+   "mods": [
+    {
+     "name": "Lithium",
+     "jar": "lithium-fabric-0.26.2+mc26.3.jar",
+     "category": "performance",
+     "sideBadge": "Client optional",
+     "sideClass": "opt",
+     "tip": "Server-Physik optimiert — Redstone und Farmen laufen smoother.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Concurrent Chunk Management Engine (Fabric)",
+     "jar": "c2me-fabric-mc26.3-0.4.2-alpha.0.90.jar",
+     "category": "performance",
+     "sideBadge": "Server macht's, Client egal",
+     "sideClass": "srv",
+     "tip": "Lädt Chunks schneller — merklich bei großen Reisegruppen.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Krypton",
+     "jar": "krypton-0.3.2.jar",
+     "category": "performance",
+     "sideBadge": "Client optional",
+     "sideClass": "opt",
+     "tip": "Optimiert die Netzwerkverbindung — weniger Lag beim Bauen weit weg vom Spawn.",
+     "clientHelp": "",
+     "disabled": false
+    }
+   ]
+  },
+  {
+   "id": "client",
+   "label": "Client-Empfehlung",
+   "mods": [
+    {
+     "name": "Shulker Box Tooltip",
+     "jar": "shulkerboxtooltip-fabric-5.4.2+26.3.jar",
+     "category": "client",
+     "sideBadge": "Client nötig!",
+     "sideClass": "cli",
+     "tip": "Shulkers zeigen ihren Inhalt als Tooltip, ohne sie zu öffnen. Client-Mod: bitte in deiner Modpack-Installation haben!",
+     "clientHelp": "Installiere 'Shulker Box Tooltip' 5.4.2 (Fabric) auf deinem Client.",
+     "disabled": false
+    },
+    {
+     "name": "Distant Horizons",
+     "jar": "DistantHorizons-3.3.4-26.3-fabric-neoforge.jar",
+     "category": "client",
+     "sideBadge": "Client empfohlen",
+     "sideClass": "rec",
+     "tip": "Sieht kilometerweit trotz kleiner Sichtweite aus. WICHTIG: Dieselbe Version 3.3.4 wie der Server installieren (Modrinth). Wer sie nicht hat, spielt normal weiter — nur ohne Ferneffekt.",
+     "clientHelp": "Download: Modrinth → Distant Horizons → Version 3.3.4 (Fabric).",
+     "disabled": false
+    }
+   ]
+  },
+  {
+   "id": "tech",
+   "label": "Bibliothek",
+   "mods": [
+    {
+     "name": "Fabric API",
+     "jar": "fabric-api-0.162.0+26.3.jar",
+     "category": "tech",
+     "sideBadge": "Client optional",
+     "sideClass": "opt",
+     "tip": "Bibliothek im Hintergrund — musst du nichts tun.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Cloth Config API",
+     "jar": "cloth-config-fabric-26.3.159.jar",
+     "category": "tech",
+     "sideBadge": "Client optional",
+     "sideClass": "opt",
+     "tip": "Bibliothek im Hintergrund — musst du nichts tun.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Collective",
+     "jar": "collective-26.3.0-8.45.jar",
+     "category": "tech",
+     "sideBadge": "Client optional",
+     "sideClass": "opt",
+     "tip": "Bibliothek im Hintergrund — musst du nichts tun.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Polymer",
+     "jar": "polymer-bundled-0.18.4+26.3.jar",
+     "category": "tech",
+     "sideBadge": "Server macht's, Client egal",
+     "sideClass": "srv",
+     "tip": "Bibliothek im Hintergrund — musst du nichts tun.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Fabric Language Kotlin",
+     "jar": "fabric-language-kotlin-1.14.2+kotlin.2.4.21.jar",
+     "category": "tech",
+     "sideBadge": "Client optional",
+     "sideClass": "opt",
+     "tip": "Bibliothek im Hintergrund — musst du nichts tun.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "JamLib",
+     "jar": "jamlib-fabric-2.3.1+26.3.x.jar",
+     "category": "tech",
+     "sideBadge": "Client+Server nötig",
+     "sideClass": "req",
+     "tip": "Bibliothek im Hintergrund — musst du nichts tun.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "Architectury API",
+     "jar": "architectury-fabric-22.0.5.jar",
+     "category": "tech",
+     "sideBadge": "Client+Server nötig",
+     "sideClass": "req",
+     "tip": "Bibliothek im Hintergrund — musst du nichts tun.",
+     "clientHelp": "",
+     "disabled": false
+    }
+   ]
+  },
+  {
+   "id": "server",
+   "label": "Server-Intern",
+   "mods": [
+    {
+     "name": "LuckPerms",
+     "jar": "LuckPerms-Fabric-5.5.85.jar",
+     "category": "server",
+     "sideBadge": "nur Server",
+     "sideClass": "srv",
+     "tip": "Rechte-Management (Ränge, Prefixe) — Team-thema, für Spieler unsichtbar.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "TAB",
+     "jar": "TAB v6.2.0.jar",
+     "category": "server",
+     "sideBadge": "unknown/unknown",
+     "sideClass": "opt",
+     "tip": "Sortiert die TAB-Liste mit Rängen und Farben.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "MiniMOTD",
+     "jar": "minimotd-fabric-mc26.3-2.2.5.jar",
+     "category": "server",
+     "sideBadge": "nur Server",
+     "sideClass": "srv",
+     "tip": "Unser Serverbanner in der Serverliste.",
+     "clientHelp": "",
+     "disabled": false
+    },
+    {
+     "name": "TabTPS",
+     "jar": "tabtps-fabric-mc26.3-1.4.2.jar",
+     "category": "server",
+     "sideBadge": "nur Server",
+     "sideClass": "srv",
+     "tip": "TPS/MSPT-Anzeige fürs Team — mit /tps einsehbar.",
+     "clientHelp": "",
+     "disabled": false
+    }
+   ]
+  }
+ ],
+ "totals": {
+  "active": 27,
+  "disabled": 1
+ }
+}

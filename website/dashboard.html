@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mein Account · FriendlyFire Minecraft</title>
+
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap nav">
+    <!-- PLACEHOLDER: wordmark = technisch bis Markenname steht -->
+    <a class="wordmark" href="/">MC.<em>MAX-KUEHN</em>.COM</a>
+    <nav class="userarea" id="userArea">
+      <span class="chip" style="pointer-events:none">&nbsp;</span>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <noscript>
+    <div class="panel" style="margin-top:40px">
+      <strong>JavaScript erforderlich</strong>
+      <p class="desc">Der Spielbereich benötigt JavaScript für API-Zugriffe.</p>
+    </div>
+  </noscript>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="grid">
+
+    <!-- PROFIL -->
+    <section class="panel">
+      <div class="profile-head">
+        <img class="avatar-big" id="bigAv" alt="Profilbild (Minecraft-Kopf)">
+        <div>
+          <h2 id="profNickname" style="font-size:22px">…</h2>
+          <div class="profile-meta" id="profMeta"></div>
+        </div>
+      </div>
+
+      <div class="inline-fields">
+        <input type="text" id="nickField" maxlength="16"
+               placeholder="Neuen Minecraft-Nickname eingeben">
+        <button class="btn small" id="saveNick">Aktualisieren</button>
+      </div>
+      <p class="note">Bei Namenswechsel wird dein Profilbild automatisch aus
+        dem neuen Skin gezogen.</p>
+      <p class="form-msg" id="nickMsg"></p>
+    </section>
+
+    <!-- PASSWORD -->
+    <section class="panel">
+      <h2>Passwort ändern</h2>
+      <p class="desc">Aus Sicherheitsgründen werden danach alle anderen
+        Geräte abgemeldet.</p>
+      <div class="field">
+        <label for="curPw">Aktuelles Passwort</label>
+        <input type="password" id="curPw" autocomplete="current-password">
+      </div>
+      <div class="field">
+        <label for="newPw">Neues Passwort <span style="opacity:.7">(mind. 10 Zeichen)</span></label>
+        <input type="password" id="newPw" minlength="10"
+               autocomplete="new-password">
+      </div>
+      <button class="btn small" id="chgPwBtn">Passwort speichern</button>
+      <p class="form-msg" id="pwMsg"></p>
+    </section>
+
+    <!-- STATS ROW -->
+    <section class="stats-chips" id="statsRow" style="display:none">
+      <div class="stat-chip"><div class="num" id="scUsers">–</div>
+        <div class="lbl">COMMUNITY-MITGLIEDER</div></div>
+      <div class="stat-chip"><div class="num" id="scPending">–</div>
+        <div class="lbl">OFFENE EINLADUNGEN</div></div>
+      <div class="stat-chip"><div class="num" id="scSessions">–</div>
+        <div class="lbl">AKTIVE SITZUNGEN</div></div>
+    </section>
+
+    <!-- MEMBER PANEL -->
+    <section class="panel" id="invPanel">
+      <h2>Einladungen</h2>
+      <p class="desc" id="invDesc">Freunde persönlich einladen — pro Person
+        genau ein Link.</p>
+
+      <template id="tplMemberFields">
+        <div class="inline-fields" style="margin-bottom:14px">
+          <input type="email" id="friendEmail" placeholder="E-Mail deines Freundes (optional — leer lassen für Copy&Paste-Link)">
+          <button class="btn small" id="mkInvite">Einladung erstellen</button>
+        </div>
+      </template>
+      <div id="invActionSlot"></div>
+
+      <div class="scroll-x">
+        <table class="tbl" id="myInvTbl">
+          <thead><tr>
+            <th>LINK</th><th>Empfänger</th><th>Status</th><th>Läuft ab</th><th></th>
+          </tr></thead>
+          <tbody id="myInvRows">
+            <tr><td colspan="5" style="color:var(--muted)">Lade …</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ADMIN PANEL -->
+    <section class="panel" id="admPanel" style="display:none">
+      <h2>Administration</h2>
+      <p class="desc">Wer darf selbst Einladungen aussprechen?</p>
+
+      <div class="scroll-x">
+        <table class="tbl" id="admUsrTbl">
+          <thead><tr>
+            <th>ID</th><th>Email</th><th>Nickname</th><th>Rolle</th>
+            <th>May invite</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody id="admUsrRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="wrap">
+  <span>&copy; <span id="yr"></span> FriendlyFire · Minecraft-Community</span>
+  <span class="mono-sm" style="color:var(--muted)">eingeloggter Bereich ·
+    <button class="linkish" id="logoutBtn" style="padding:0">Abmelden</button></span>
+</footer>
+
+<script>
+'use strict';
+
+const MSG_ERRORS={
+  weak_password:'Das Passwort ist zu kurz (mind. 10 Zeichen).',
+  invalid_nick_format:'Nick: 3–16 Zeichen, nur Buchstaben/Zahlen/_',
+  unknown_nick:'Diesen Minecraft-Namen gibt es nicht.',
+  nick_taken:'Dieser Nickname ist schon vergeben.',
+  forbidden:'Keine Berechtigung dafür.',
+  rate_limited:'Zu viele Anfragen — kurz warten.',
+  mojang_unavailable:'Mojang gerade nicht erreichbar — später erneut.',
+};
+const qs=s=>document.querySelector(s);
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;',
+  '>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(txt){
+  const t=qs('#toast');t.textContent=txt;t.classList.add('show');
+  clearTimeout(window.__tt);window.__tt=setTimeout(()=>{
+    t.classList.remove('show');},2600);
+}
+async function api(method,path,body){
+  const opts={method,credentials:'same-origin'};
+  if(body!==undefined){
+    opts.body=JSON.stringify(body);
+    opts.headers={'Content-Type':'application/json'};
+  }
+  const r=await fetch(path,opts);
+  if(r.status===401){location.href='/login';throw new Error('anon');}
+  let payload=null;
+  try{payload=await r.clone().json();}catch(_){}
+  if(!r.ok){
+    throw Object.assign(new Error('api'),
+      {code:payload?.detail?.code,status:r.status});
+  }
+  return payload ?? {};
+}
+
+// ---- boot -------------------------------------------------------------
+let ME=null;
+(async()=>{
+  qs('#yr').textContent=new Date().getFullYear();
+
+  try{
+    const meResp=await api('GET','/api/me');
+    ME=meResp.user;
+  }catch(err){
+    if(err&&err.message==='anon'){return;} // redirected already
+    location.href='/login';return;
+  }
+
+  paintHeader(ME);
+  qs('#bigAv').src=`/avatar/${encodeURIComponent(ME.nickname)}.png`;
+  qs('#profNickname').textContent=ME.nickname;
+  qs('#profMeta').innerHTML =
+    `${esc(ME.email)} · UUID: ${esc(ME.uuid)||'(noch keine)'}`;
+
+  if(ME.role==='admin'){
+    qs('#statsRow').style.display='flex';
+    qs('#admPanel').style.display='block';
+    refreshStats();
+    refreshAdminUsers();
+  }
+  refreshMyInvites();
+})();
+
+function paintHeader(me){
+  const ua=qs('#userArea');
+  ua.innerHTML=`
+    <a class="chip" href="/dashboard.html">
+      <img src="/avatar/${encodeURIComponent(me.nickname)}.png" alt="">
+      <span>${esc(me.nickname)}</span>
+    </a>
+    <a class="linkish" href="/">Übersicht</a>
+    ${me.role==='admin' ? '<a class="linkish" href="/admin">Admin</a>' : ''}
+    <button class="linkish" id="navLogout" style="padding:8px 10px">Logout</button>`;
+  qs('#navLogout').addEventListener('click',async ()=>{
+    try{await api('POST','/api/logout');}catch(_){}
+    location.href='/login';
+  });
+}
+
+// ---- nickname ---------------------------------------------------------
+qs('#saveNick').addEventListener('click',async ()=>{
+  const val=qs('#nickField').value.trim();
+  if(val.length<3)return;
+  const msgEl=qs('#nickMsg');
+  msgEl.className='form-msg';msgEl.textContent='Prüfe Name bei Mojang …';
+  try{
+    const resp=await api('PUT','/api/profile/nickname',{nickname:val});
+    toast(`Nickname gesetzt: ${resp.nickname}`);
+    location.reload();
+  }catch(err){
+    msgEl.textContent=MSG_ERRORS[err.code]||'Fehler beim Speichern.';
+    msgEl.classList.add('err');
+  }
+});
+
+// ---- invites (member) -------------------------------------------------
+(function(){
+  const tpl=qs('#tplMemberFields');
+  qs('#invActionSlot').appendChild(tpl.content.cloneNode(true));
+})();
+qs('#mkInvite')?.addEventListener('click',async ev=>{
+  const emailVal=qs('#friendEmail')?.value.trim()||'';
+  const btn=ev.currentTarget;
+  btn.disabled=true;
+  try{
+    const resp=await api('POST','/api/invites',
+      {recipientEmail:emailVal});
+    toast(resp.mailed?'Einladung per Mail versendet.'
+                      :'Einladung erstellt — Link kopierbar.');
+    refreshMyInvites();
+  }catch(err){
+    toast(MSG_ERRORS[err.code]||'Einladung fehlgeschlagen.');
+  }finally{btn.disabled=false;}
+});
+
+async function refreshMyInvites(){
+  const tbody=qs('#myInvRows');
+  try{
+    const data=await api('GET','/api/my-invites');
+    if(!data.invites.length){
+      tbody.innerHTML='<tr><td colspan="5" style="color:var(--muted)">'
+        +'Noch keine Einladungen ausgesprochen.</td></tr>';
+      return;
+    }
+    tbody.innerHTML=data.invites.map(inv=>{
+      const expired=inv.expiresAt<Date.now()/1000;
+      const st=inv.redeemed
+        ?'<span class="tag live">EINGELÖST</span>'
+        :(expired?'<span class="tag dead">ABGELAUFEN</span>'
+                 :'<span class="tag">OFFEN</span>');
+      return `
+        <tr>
+          <td class="mono-sm">${esc(inv.url)}</td>
+          <td>${esc(inv.recipientEmail||'—')}</td>
+          <td>${st}</td>
+          <td>${new Date(inv.expiresAt*1000).toLocaleDateString('de-DE')}</td>
+          <td>${
+            (!inv.redeemed&&!expired)?`
+            <button class="btn small danger" data-copy="${esc(inv.url)}"
+              title="Link kopieren">📋 Kopieren</button>
+            <button class="btn small ghost" data-revoke="${esc(inv.code)}"
+              title="widerrufen">✕ Widerrufen</button>`:''}
+        </tr>`;
+    }).join('');
+  }catch(err){
+    tbody.innerHTML='<tr><td colspan="5" style="color:var(--danger)">'
+      +'Liste konnte nicht geladen werden.</td></tr>';
+  }
+}
+
+document.addEventListener('click',ev=>{
+  const cp=ev.target.closest('[data-copy]');
+  if(cp){
+    navigator.clipboard.writeText(cp.dataset.copy)
+      .then(()=>toast('Link kopiert.'));
+    return;
+  }
+  const rv=ev.target.closest('[data-revoke]');
+  if(rv){
+    api('POST','/api/invites/revoke',{code:rv.dataset.revoke})
+      .then(()=>{toast('Einladung widerrufen.');refreshMyInvites();})
+      .catch(err=>toast(MSG_ERRORS[err.code]||'Widerruf fehlgeschlagen.'));
+  }
+});
+
+// ---- admin ------------------------------------------------------------
+async function refreshStats(){
+  try{
+    const s=await api('GET','/api/admin/stats');
+    qs('#scUsers').textContent=s.users;
+    qs('#scPending').textContent=s.pendingInvites;
+    qs('#scSessions').textContent=s.sessions;
+  }catch(_){}
+}
+
+async function refreshAdminUsers(){
+  const tb=qs('#admUsrRows');
+  try{
+    const data=await api('GET','/api/admin/users');
+    tb.innerHTML=data.users.map(u=>`
+      <tr>
+        <td>#${u.id}</td>
+        <td class="mono-sm">${esc(u.email)}</td>
+        <td>${esc(u.nickname)}</td>
+        <td>${u.role==='admin'?'<span class="tag live">ADMIN</span>'
+                               :'<span class="tag">MEMBER</span>'}</td>
+        <td>${u.invitesEnabled?'✔':'—'}</td>
+        <td>${u.disabled?'<span class="tag dead">Gesperrt</span>'
+                        :'<span class="tag live">OK</span>'}</td>
+        <td>
+          <button class="btn small ghost" data-toggle="${u.id}"
+            data-next="${u.invitesEnabled?'0':'1'}">
+            ${u.invitesEnabled?'Entziehen':'Erlauben'}
+          </button>
+        </td>
+      </tr>`).join('');
+  }catch(_){
+    tb.innerHTML='<tr><td colspan="7" style="color:var(--danger)">'
+     +'Benutzerliste nicht ladbar.</td></tr>';
+  }
+}
+
+document.addEventListener('click',ev=>{
+  const tg=ev.target.closest('[data-toggle]');
+  if(tg){
+    api('POST',`/api/admin/users/${tg.dataset.toggle}/allow-invites`,
+        {enabled:tg.dataset.next==='1'})
+      .then(()=>{toast('Rechte aktualisiert.');refreshAdminUsers();})
+      .catch(err=>toast(MSG_ERRORS[err.code]||'Update fehlgeschlagen.'));
+  }
+});
+
+// ---- password change --------------------------------------------------
+qs('#chgPwBtn').addEventListener('click',async ()=>{
+  const btn=qs('#chgPwBtn');
+  const msg=qs('#pwMsg');
+  msg.className='form-msg';msg.textContent='';
+  btn.disabled=true;
+  try{
+    await api('PUT','/api/profile/password',{
+      currentPassword:qs('#curPw').value,
+      newPassword:qs('#newPw').value});
+    toast('Passwort geändert — andere Geräte wurden abgemeldet.');
+    qs('#curPw').value='';qs('#newPw').value='';
+  }catch(err){
+    msg.textContent=MSG_ERRORS[err.code]||
+      (err.code==='wrong_credentials'?'Aktuelles Passwort ist falsch.':
+       'Ändern fehlgeschlagen.');
+    msg.classList.add('err');
+  }finally{btn.disabled=false;}
+});
+
+// ---- logout -----------------------------------------------------------
+qs('#logoutBtn').addEventListener('click',async ()=>{
+  try{await api('POST','/api/logout');}catch(_){}
+  location.href='/login';
+});
+</script>
+
+</body>
+</html>

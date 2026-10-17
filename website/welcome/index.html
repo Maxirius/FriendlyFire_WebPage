@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minecraft-Community · max-kuehn.com</title>
+<meta name="description" content="Willkommensseite unseres Minecraft-Servers. Weltkarte, Statistiken und Spielerkonten folgen.">
+
+<style>
+/* ============================================================
+   TOKENS - dark block look: square, angular, one accent
+   ============================================================ */
+:root{
+  --bg:        #101418;
+  --panel:     #171d23;
+  --panel-2:   #131920;
+  --ink:       #e9eee2;
+  --muted:     #94a396;
+  --border:    #26303a;
+  --accent:    #77cf52;   /* grass block green */
+  --accent-ink:#10230c;
+  --amber:     #ffc35c;   /* torch amber, sparingly */
+  --font-body: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-pixel:"Press Start 2P", monospace;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+::selection{background:var(--accent);color:var(--accent-ink);}
+
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  line-height:1.6;
+  /* feines Blockraster im Hintergrund */
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size:48px 48px;
+  background-position:center top;
+  opacity:.999; /* grid would feel too dominant otherwise, dampened below */
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;
+  background:linear-gradient(180deg,
+    rgba(16,20,24,.92) 0%, rgba(16,20,24,.86) 40%, rgba(16,20,24,.97) 100%);
+}
+
+.wrap{max-width:1060px;margin:0 auto;padding:0 24px;}
+
+/* ---------- Header ---------- */
+header{
+  border-bottom:1px solid var(--border);
+  background:rgba(16,20,24,.82);
+  backdrop-filter:blur(6px);
+  position:sticky;top:0;z-index:10;
+}
+.nav{
+  display:flex;align-items:center;gap:28px;height:64px;
+}
+.wordmark{
+  font-family:var(--font-pixel);
+  font-size:13px;color:var(--ink);
+  letter-spacing:.5px;text-decoration:none;line-height:1.4;
+}
+.wordmark em{color:var(--accent);font-style:normal;}
+nav.links{
+  margin-left:auto;display:flex;gap:8px;align-items:center;
+}
+nav.links a{
+  color:var(--muted);text-decoration:none;font-size:14px;
+  padding:8px 12px;border:1px solid transparent;
+  transition:color .15s,border-color .15s;
+}
+nav.links a:hover:not(.soon){color:var(--ink);}
+.soon-tag{
+  font-family:var(--font-mono);font-size:10px;
+  color:var(--muted);border:1px dashed var(--border);
+  padding:1px 5px;margin-left:6px;vertical-align:middle;
+}
+.btn-discord{
+  color:var(--accent-ink)!important;background:var(--accent);
+  border:1px solid var(--accent)!important;font-weight:700;
+}
+.btn-discord:hover{background:#8ce363!important;}
+
+@media(max-width:720px){
+  nav.links a.hide-mobile{display:none;}
+  /* Keep the header one row tall; the anchor strip scrolls horizontally
+     instead of pushing the page wider than the viewport. */
+  .nav{height:auto;flex-wrap:wrap;gap:10px;padding:10px 0;}
+  nav.links{margin-left:0;width:100%;overflow-x:auto;scrollbar-width:none;}
+  nav.links::-webkit-scrollbar{display:none;}
+  nav.links a{padding:6px 8px;font-size:13px;white-space:nowrap;flex:none;}
+}
+
+/* ---------- Hero ---------- */
+.hero{
+  display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);
+  gap:56px;align-items:end;
+  padding:96px 0 72px;
+}
+.kicker{
+  display:inline-flex;align-items:center;gap:10px;
+  font-family:var(--font-mono);font-size:12px;color:var(--muted);
+  border:1px solid var(--border);padding:6px 12px;margin-bottom:28px;
+  background:var(--panel-2);
+}
+.kicker i{
+  width:8px;height:8px;background:var(--accent);display:inline-block;
+  animation:pulse 2.4s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+h1{
+  font-size:clamp(38px,6vw,62px);
+  font-weight:700;line-height:1.04;letter-spacing:-.02em;
+  text-wrap:balance;
+}
+h1 .hl{color:var(--accent);}
+.lede{
+  margin-top:22px;font-size:18px;color:var(--muted);max-width:46ch;
+  text-wrap:pretty;
+}
+.cta-row{margin-top:36px;display:flex;gap:14px;flex-wrap:wrap;}
+.cta{
+  display:inline-block;text-decoration:none;font-weight:700;font-size:15px;
+  padding:13px 22px;border:1px solid var(--border);
+  color:var(--ink);transition:transform .12s ease,background .15s,color .15s;
+}
+.cta.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+.cta.primary:hover{background:#8ce363;}
+.cta.ghost:hover{background:var(--panel);border-color:var(--muted);}
+.cta.disabled{color:var(--muted);cursor:not-allowed;border-style:dashed;}
+
+/* Voxel hillside, right column */
+.voxelfield{justify-self:end;width:100%;max-width:420px;}
+.voxelfield svg{display:block;width:100%;height:auto;}
+.caption{
+  margin-top:10px;font-family:var(--font-mono);font-size:11px;
+  color:var(--muted);text-align:right;
+}
+
+@media(max-width:860px){
+  .hero{grid-template-columns:1fr;padding:64px 0 48px;gap:40px;}
+  .voxelfield{justify-self:start;max-width:340px;}
+  .caption{text-align:left;}
+}
+
+/* ---------- Roadmap ---------- */
+section.phase-strip{
+  border-top:1px solid var(--border);
+  padding:64px 0 80px;
+}
+.section-head{display:flex;align-items:baseline;gap:16px;margin-bottom:40px;}
+.section-head h2{font-size:26px;font-weight:700;letter-spacing:-.01em;}
+.section-head span{font-family:var(--font-mono);font-size:12px;color:var(--muted);}
+
+.phases{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  counter-reset:phase;
+}
+@media(max-width:860px){.phases{grid-template-columns:1fr;}}
+
+.phase{
+  border-left:1px solid var(--border);
+  padding:4px 22px 8px;
+  position:relative;
+}
+.phase:first-child{border-left:none;padding-left:0;}
+@media(max-width:860px){
+  .phase{border-left:none;border-top:1px solid var(--border);padding:20px 0 8px;}
+  .phase:first-child{border-top:none;}
+}
+.phase-num{
+  font-family:var(--font-pixel);font-size:10px;color:var(--muted);
+  display:block;margin-bottom:14px;
+}
+.phase.active .phase-num{color:var(--accent);}
+.phase h3{font-size:16px;font-weight:700;margin-bottom:8px;}
+.phase p{font-size:13.5px;color:var(--muted);text-wrap:pretty;}
+.phase .now{
+  display:inline-block;font-family:var(--font-mono);font-size:10px;
+  background:var(--accent);color:var(--accent-ink);
+  padding:2px 7px;margin-top:12px;font-weight:600;
+}
+
+/* ---------- Server status (topology: network pill above worlds) ---------- */
+.status-section{
+  border-top:1px solid var(--border);
+  padding:64px 0 80px;
+}
+.status-meta{
+  margin-top:-24px;margin-bottom:36px;
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+}
+.topology{position:relative;}
+.flow-lines{
+  position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:0;
+}
+.flow-lines path{
+  fill:none;stroke:var(--muted);stroke-width:1.5;opacity:.5;
+}
+.flow-lines polygon.head{fill:var(--accent);opacity:.85;}
+@media(prefers-reduced-motion:no-preference){
+  .flow-lines path.live{
+    stroke-dasharray:4 7;
+    animation:flowdash 1.5s linear infinite;
+  }
+  @keyframes flowdash{to{stroke-dashoffset:-11;}}
+}
+.status-grid{
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:16px;margin-top:40px;
+}
+@media(max-width:860px){
+  .status-grid{grid-template-columns:1fr;}
+  .flow-lines{display:none;}
+}
+.mc-card{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:22px 24px 20px;position:relative;
+}
+.mc-card .lamp{
+  position:absolute;top:22px;right:22px;
+  width:10px;height:10px;
+}
+.mc-card .lamp.on{background:var(--accent);animation:pulse 2.4s infinite;}
+.mc-card .lamp.stop{background:var(--amber);}
+.mc-card .lamp.off{background:transparent;border:1px solid var(--muted);}
+.mc-card h3{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  color:var(--muted);letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:14px;
+  display:flex;align-items:center;gap:9px;
+}
+.card-icon{
+  width:26px;height:26px;flex:none;
+  image-rendering:pixelated;background:#0b0e12;
+  border:1px solid var(--border);padding:2px;
+}
+.mc-card .big{
+  font-size:30px;font-weight:700;line-height:1.1;
+  font-variant-numeric:tabular-nums;
+}
+.mc-card .big small{font-size:15px;color:var(--muted);font-weight:500;}
+.mc-card .state-word{
+  display:inline-block;margin-top:10px;
+  font-family:var(--font-mono);font-size:10px;font-weight:600;
+  padding:3px 8px;letter-spacing:.06em;
+}
+.state-online .state-word{background:var(--accent);color:var(--accent-ink);}
+.state-stopped .state-word{background:transparent;color:var(--amber);border:1px dashed var(--amber);}
+.state-offline .state-word{background:transparent;color:var(--muted);border:1px dashed var(--border);}
+.mc-card .sub{
+  margin-top:12px;font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* ---- live player heads ---- */
+.online-strip{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:10px 18px;margin-bottom:14px;
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+}
+.online-strip b{color:var(--ink);font-size:15px;}
+.ol-label{letter-spacing:.08em;}
+.head-row{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.phead{width:22px;height:22px;image-rendering:pixelated;background:#0b0e12;
+  border:1px solid var(--border);}
+.more{color:var(--muted);font-size:10px;margin-left:2px;}
+.mc-card .head-row{margin-top:12px;}
+.mc-card .phead{width:26px;height:26px;}
+.net-bar{
+  position:relative;z-index:1;
+  border:1px solid var(--border);background:var(--panel);
+  padding:14px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  font-family:var(--font-mono);font-size:12px;color:var(--muted);
+}
+.net-icon{
+  width:24px;height:24px;flex:none;
+  image-rendering:pixelated;background:#0b0e12;
+  border:1px solid var(--border);padding:2px;
+}
+.net-bar .lamp{
+  flex:none;width:10px;height:10px;display:inline-block;
+}
+.net-bar .lamp.on{background:var(--accent);animation:pulse 2.4s infinite;}
+.net-bar .lamp.stop{background:var(--amber);}
+.net-bar .lamp.off{background:transparent;border:1px solid var(--muted);}
+.net-bar b{color:var(--ink);font-weight:600;}
+.net-bar-inner{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;width:100%;
+}
+.net-bar small{font-size:10px;}
+
+.ping-widget{
+  margin-top:16px;border:1px solid var(--border);background:var(--panel-2);
+  padding:16px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.ping-btn{
+  appearance:none;border:1px solid var(--accent);background:transparent;
+  color:var(--accent);font-family:var(--font-mono);font-size:12px;
+  font-weight:600;padding:9px 16px;cursor:pointer;
+  transition:background .15s,color .15s;
+}
+.ping-btn:hover:not(:disabled){background:var(--accent);color:var(--accent-ink);}
+.ping-btn:disabled{opacity:.45;cursor:progress;}
+.ping-hint{font-family:var(--font-mono);font-size:11px;color:var(--muted);}
+.ping-results{
+  display:none;gap:12px;flex-wrap:wrap;width:100%;
+  font-family:var(--font-mono);font-size:12px;
+}
+.ping-results.show{display:flex;}
+.ping-route{
+  border:1px solid var(--border);padding:10px 14px;min-width:220px;flex:1;
+  display:flex;flex-direction:column;gap:2px;
+}
+.ping-route .lbl{color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
+.ping-route .val{font-size:16px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
+.ping-route .val.good{color:var(--accent);}
+.ping-route .val.warn{color:var(--amber);}
+
+/* ---------- Statistics ---------- */
+.stats-section{
+  border-top:1px solid var(--border);
+  padding:64px 0 80px;
+}
+.stat-figure-grid{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:34px;
+}
+@media(max-width:860px){.stat-figure-grid{grid-template-columns:repeat(2,1fr);}}
+.figure{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:16px 18px;
+}
+.figure .num{font-size:26px;font-weight:700;color:var(--accent);
+  font-variant-numeric:tabular-nums;}
+.figure .lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted);
+  letter-spacing:.06em;text-transform:uppercase;margin-top:2px;}
+.chart-frame{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:20px 22px 14px;
+}
+.chart-title{
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+}
+.legend{display:flex;gap:14px;font-family:var(--font-mono);font-size:10px;
+  color:var(--muted);}
+.legend i{display:inline-block;width:10px;height:3px;margin-right:5px;
+  vertical-align:middle;}
+.chart-svg{width:100%;height:auto;display:block;}
+.axis-label{font-family:var(--font-mono);font-size:9px;fill:var(--muted);}
+.chart-stats{
+  display:flex;gap:22px;flex-wrap:wrap;margin-top:12px;
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+}
+.chart-stats b{color:var(--ink);font-weight:600;}
+
+/* ---------- Mods ---------- */
+.mods-section{
+  border-top:1px solid var(--border);
+  padding:64px 0 80px;
+}
+.mod-cat-label{
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;
+  margin:34px 0 14px;display:flex;align-items:center;gap:12px;
+}
+.mod-cat-label:first-of-type{margin-top:0;}
+.mod-cat-label::after{content:"";flex:1;height:1px;background:var(--border);}
+.mod-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:14px;
+}
+.mod-card{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:16px 18px 14px;
+}
+.mod-card h4{
+  font-size:15px;font-weight:700;margin-bottom:2px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+}
+.mod-side{
+  font-family:var(--font-mono);font-size:9px;font-weight:500;
+  padding:2px 6px;letter-spacing:.05em;white-space:nowrap;
+}
+.mod-side.req{color:var(--amber);border:1px solid var(--amber);}
+.mod-side.cli{color:var(--danger);border:1px solid var(--danger);}
+.mod-side.srv{color:var(--muted);border:1px solid var(--border);}
+.mod-side.opt{color:var(--muted);border:1px dashed var(--border);}
+.mod-side.rec{color:var(--accent);border:1px dashed var(--accent);}
+.mod-tip{
+  margin-top:8px;font-size:13px;color:var(--muted);line-height:1.55;
+  text-wrap:pretty;
+}
+.mod-help{
+  margin-top:8px;font-family:var(--font-mono);font-size:11px;
+  color:var(--accent);
+}
+.mods-footnote{
+  margin-top:26px;font-family:var(--font-mono);font-size:11px;
+  color:var(--muted);
+}
+
+/* ---------- Ingame stats ---------- */
+.board-cols{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:14px;margin-top:30px;
+}
+.board{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:16px 18px;
+}
+.board h4{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  color:var(--muted);letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:12px;
+}
+.board ol{list-style:none;}
+.board li{
+  display:flex;align-items:center;gap:10px;padding:6px 0;
+  border-bottom:1px solid var(--border);font-size:13.5px;
+}
+.board li:last-child{border-bottom:none;}
+.board .rk{font-family:var(--font-mono);font-size:10px;color:var(--muted);
+  width:22px;flex:none;}
+.board .nm{flex:1;display:flex;align-items:center;gap:8px;min-width:0;}
+.board .nm img{width:20px;height:20px;image-rendering:pixelated;
+  background:#0b0e12;flex:none;}
+.board .vl{font-family:var(--font-mono);font-size:12px;color:var(--accent);
+  font-variant-numeric:tabular-nums;flex:none;}
+.board .empty{color:var(--muted);font-size:13px;}
+.profile-tiles{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:14px;margin-top:30px;
+}
+.ptile{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:16px 18px;display:flex;gap:14px;align-items:center;
+}
+.ptile img.av{width:44px;height:44px;image-rendering:pixelated;
+  background:#0b0e12;border:1px solid var(--border);}
+.ptile .pname{font-weight:700;font-size:15px;}
+.ptile .pmeta{font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  margin-top:2px;}
+
+/* ---------- World map ---------- */
+.map-section{
+  border-top:1px solid var(--border);
+  padding:64px 0 80px;
+}
+.map-frame{
+  position:relative;
+  aspect-ratio:16/9;
+  border:1px solid var(--border);
+  background:var(--panel-2);
+  overflow:hidden;
+}
+.map-frame iframe{
+  position:absolute;inset:0;width:100%;height:100%;
+  border:0;background:#0b0e12;
+}
+.map-links{
+  margin-top:14px;
+  font-family:var(--font-mono);font-size:12px;
+}
+.map-links a{color:var(--accent);text-decoration:none;}
+.map-links a:hover{text-decoration:underline;}
+
+/* ---------- Login hint ---------- */
+.login-note{
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:28px 32px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;
+  margin-bottom:80px;
+}
+.lock{
+  flex:none;color:var(--amber);
+}
+.login-note div>p:first-child{font-weight:700;margin-bottom:4px;}
+.login-note p{font-size:14px;color:var(--muted);}
+
+/* ---------- Footer ---------- */
+footer{
+  border-top:1px solid var(--border);
+  padding:36px 0 48px;
+  display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  font-family:var(--font-mono);font-size:12px;color:var(--muted);
+}
+footer .tagline em{color:var(--accent);font-style:normal;}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001s!important;transition-duration:.001s!important;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <!--
+  PLACEHOLDER: wordmark = technical address until the server name/domain
+  is decided
+-->
+  <div class="wrap nav">
+    <a class="wordmark" href="/">MC.<em>MAX-KUEHN</em>.COM</a>
+    <nav class="links">
+      <a href="#serverstatus">Status</a>
+      <a href="#mods">Mods</a>
+      <a href="#statistiken-live">Statistiken</a>
+      <a href="#weltkarte">Weltkarte</a>
+      <a class="hide-mobile" href="/dashboard.html" id="navDash" style="display:none">Mein Konto</a>
+      <a href="/login" id="navLogin">Login</a>
+      <a class="btn-discord hide-mobile" href="#">Discord</a><!-- invite link follows -->
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div>
+      <span class="kicker"><i></i> SERVER PROJEKT LÄUFT · FABRIC 26.3</span>
+      <h1>Eine Welt,<br>die hier ihr <span class="hl">Zuhause</span> bekommt.</h1>
+      <p class="lede">
+        Unser Minecraft-Server wächst — und diese Seite wird sein Schaufenster:
+        Weltkarte zum Erkunden, Statistiken zum Stöbern und später ein eigener
+        Bereich für angemeldete Spieler.
+      </p>
+      <div class="cta-row" id="ctaRow">
+        <a class="cta primary" href="/login" id="ctaMain">Spielerbereich</a>
+        <a class="cta ghost" href="#roadmap">Was geplant ist ↓</a>
+      </div>
+    </div>
+
+    <!--
+  Decorative voxel landscape (SVG, deterministic)
+-->
+    <figure class="voxelfield" aria-hidden="true">
+      <svg viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg">
+        <!-- clouds -->
+        <rect x="40"  y="26" width="42" height="10" fill="#2a333d"/>
+        <rect x="196" y="16" width="30" height="10" fill="#2a333d"/>
+        <rect x="230" y="26" width="18" height="10" fill="#222a33"/>
+        <!-- floating island -->
+        <rect x="228" y="58" width="36" height="8" fill="#77cf52"/>
+        <rect x="236" y="66" width="20" height="8" fill="#6a5a3e"/>
+        <rect x="240" y="74" width="12" height="6" fill="#59492f"/>
+        <!-- terrain: stepped columns, grass tops, dirt beneath -->
+        <g>
+          <!-- col heights (deterministisches Profil) -->
+          <rect x="0"   y="130" width="20" height="90" fill="#5aa63f"/><rect x="0"   y="140" width="20" height="80" fill="#6a5a3e"/>
+          <rect x="20"  y="122" width="20" height="98" fill="#5aa63f"/><rect x="20"  y="132" width="20" height="88" fill="#6a5a3e"/>
+          <rect x="40"  y="126" width="20" height="94" fill="#67bf47"/><rect x="40"  y="136" width="20" height="84" fill="#6a5a3e"/>
+          <rect x="60"  y="112" width="20" height="108" fill="#5aa63f"/><rect x="60"  y="122" width="20" height="98" fill="#6a5a3e"/>
+          <rect x="80"  y="104" width="20" height="116" fill="#67bf47"/><rect x="80"  y="114" width="20" height="106" fill="#6a5a3e"/>
+          <rect x="100" y="110" width="20" height="110" fill="#5aa63f"/><rect x="100" y="120" width="20" height="100" fill="#6a5a3e"/>
+          <rect x="120" y="96"  width="20" height="124" fill="#67bf47"/><rect x="120" y="106" width="20" height="114" fill="#6a5a3e"/>
+          <rect x="140" y="88"  width="20" height="132" fill="#5aa63f"/><rect x="140" y="98"  width="20" height="122" fill="#6a5a3e"/>
+          <rect x="160" y="94"  width="20" height="126" fill="#67bf47"/><rect x="160" y="104" width="20" height="116" fill="#6a5a3e"/>
+          <rect x="180" y="78"  width="20" height="142" fill="#5aa63f"/><rect x="180" y="88"  width="20" height="132" fill="#6a5a3e"/>
+          <rect x="200" y="84"  width="20" height="136" fill="#67bf47"/><rect x="200" y="94"  width="20" height="126" fill="#6a5a3e"/>
+          <rect x="220" y="70"  width="20" height="150" fill="#5aa63f"/><rect x="220" y="80"  width="20" height="140" fill="#6a5a3e"/>
+          <rect x="240" y="76"  width="20" height="144" fill="#67bf47"/><rect x="240" y="86"  width="20" height="134" fill="#6a5a3e"/>
+          <rect x="260" y="62"  width="20" height="158" fill="#5aa63f"/><rect x="260" y="72"  width="20" height="148" fill="#6a5a3e"/>
+          <rect x="280" y="68"  width="20" height="152" fill="#67bf47"/><rect x="280" y="78"  width="20" height="142" fill="#6a5a3e"/>
+          <rect x="300" y="56"  width="20" height="164" fill="#5aa63f"/><rect x="300" y="66"  width="20" height="154" fill="#6a5a3e"/>
+        </g>
+        <!-- tree canopy on the middle crest -->
+        <rect x="182" y="64" width="16" height="14" fill="#3f8f2f"/>
+        <rect x="186" y="56" width="8"  height="8"  fill="#3f8f2f"/>
+        <!-- torch dot -->
+        <rect x="264" y="50" width="4" height="6" fill="#ffc35c"/>
+      </svg>
+      <figcaption class="caption">// gerendert zuhause · geliefert aus der cloud</figcaption>
+    </figure>
+  </div>
+
+  <!-- ROADMAP -->
+  <section class="phase-strip" id="roadmap">
+    <div class="section-head">
+      <h2>Roadmap</h2>
+      <span>wird mit dem Server mitwachsen</span>
+    </div>
+    <div class="phases">
+      <article class="phase active">
+        <span class="phase-num">PHASE 01</span>
+        <h3>Willkommensseite</h3>
+        <p>Diese Seite — erster Anlaufpunkt und Info-Hub für die Community.</p>
+        <span class="now">JETZT AKTIV</span>
+      </article>
+      <article class="phase active" id="karte">
+        <span class="phase-num">PHASE 02</span>
+        <h3>Weltkarte</h3>
+        <p>Unsere Welt wird fortlaufend kartografiert und live von unserer Infrastruktur gestreamt — volle Geschwindigkeit für jeden Besucher.</p>
+        <span class="now">LIVE</span>
+      </article>
+      <article class="phase active" id="statistiken">
+        <span class="phase-num">PHASE 03</span>
+        <h3>Statistiken</h3>
+        <p>Kennzahlen der Community und Spieleraktivität, live aus unserer
+          Infrastruktur.</p>
+        <span class="now">LIVE</span>
+      </article>
+      <article class="phase active" id="login">
+        <span class="phase-num">PHASE 04</span>
+        <h3>Login &amp; Profile</h3>
+        <p>Accounts nur per persönlicher Einladung, Minecraft-Nickname für die
+          Whitelist-Automatisierung, Profilbild automatisch aus dem Skin.</p>
+        <span class="now">IM BAU</span>
+      </article>
+    </div>
+  </section>
+
+  <!-- SERVER STATUS -->
+  <section class="status-section" id="serverstatus">
+    <div class="section-head">
+      <h2>Serverstatus</h2>
+      <span>live aus unserem Netz</span>
+    </div>
+    <p class="status-meta" id="statusMeta">// verbinde …</p>
+    <div class="online-strip" id="onlineStrip">
+      <span class="ol-label">GERADE ONLINE</span>
+      <span class="more">// verbinde …</span>
+    </div>
+    <div class="topology" id="topologyWrap">
+      <svg class="flow-lines" id="flowLines" aria-hidden="true"></svg>
+      <div class="net-bar topology-head" id="netBar"></div>
+      <div class="status-grid" id="statusGrid"></div>
+    </div>
+    <div class="ping-widget" id="pingWidget">
+      <button class="ping-btn" id="pingBtn" type="button">Ping-Test starten</button>
+      <span class="ping-hint" id="pingHint">misst deine Latenz zu den Spielservern</span>
+      <div class="ping-results" id="pingResults"></div>
+    </div>
+  </section>
+
+  <!-- MODS -->
+  <section class="mods-section" id="mods">
+    <div class="section-head">
+      <h2>Mods</h2>
+      <span>was auf unserem Server läuft — und wie du es nutzt</span>
+    </div>
+    <div id="modShowcase"><!-- populated by script --></div>
+    <p class="mods-footnote" id="modsFootnote">// liste wird aus der
+      server-checkliste generiert · stand dynamisch</p>
+  </section>
+
+  <!-- STATISTICS (teaser -> /stats) -->
+  <section class="stats-section" id="statistiken-live">
+    <div class="section-head">
+      <h2>Statistiken</h2>
+      <span>ingame-zahlen unserer spieler</span>
+    </div>
+    <div class="stat-figure-grid" id="statFigures"></div>
+    <p class="mods-footnote" style="margin-top:18px">
+      <a href="/stats" style="color:var(--accent);text-decoration:none">→ Vollständige Statistiken öffnen (alle Kategorien, Charts, Profile)</a>
+    </p>
+  </section>
+
+  <!-- WORLD MAP -->
+  <section class="map-section" id="weltkarte">
+    <div class="section-head">
+      <h2>Weltkarte</h2>
+      <span>live erkunden — unsere Welt in Echtzeit</span>
+    </div>
+    <div class="map-frame" id="mapFrame">
+      <iframe id="mapEmbed" title="Interactive world map (BlueMap)" loading="lazy"
+              src="https://map.max-kuehn.com/" allowfullscreen></iframe>
+    </div>
+    <p class="map-links">
+      <a href="https://map.max-kuehn.com/" target="_blank" rel="noopener">Karte im Vollbild öffnen ↗</a>
+    </p>
+  </section>
+
+  <!-- LOGIN HINT -->
+  <aside class="login-note">
+    <svg class="lock" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4" y="10" width="16" height="11" stroke="currentColor" stroke-width="2"/>
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2"/>
+      <circle cx="12" cy="15.5" r="1.6" fill="currentColor"/>
+    </svg>
+    <div>
+      <p>Zugang nur per Einladung</p>
+      <p>Die gesamte Seite ist inzwischen für Mitglieder reserviert: Account,
+        Whitelist-Anbindung und persönliche Statistiken. Bestehende Spieler
+        melden sich oben rechts an — neue Freunde bekommen eine persönliche
+        Einladung per Mail.</p>
+    </div>
+  </aside>
+
+</main>
+
+<footer class="wrap">
+  <span>&copy; <span id="year"></span> max-kuehn.com · Minecraft-Community</span>
+  <span class="tagline">zu hause <em>gerendert</em>, aus der cloud <em>geliefert</em>.</span>
+</footer>
+
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+
+(function(){
+  const grid=document.getElementById('statusGrid');
+  const meta=document.getElementById('statusMeta');
+  const strip=document.getElementById('onlineStrip');
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g,
+      c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function lampCls(state){
+    return state==='online' ? 'on' : state==='stopped' ? 'stop' : 'off';
+  }
+  function stateWord(state){
+    return state==='online' ? 'ONLINE'
+         : state==='stopped' ? 'GESTOPPT' : 'OFFLINE';
+  }
+
+  // Vanilla item icons per surface (server-side extracted PNGs).
+  const CARD_ICONS = {
+    survival:'/assets/icons/diamond_pickaxe.png',
+    creative:'/assets/icons/painting.png',
+    network: '/assets/icons/compass.png',
+  };
+
+  function headRowHtml(names){
+    const shown = names.slice(0, 8);
+    const heads = shown.map(n =>
+      `<img class="phead" src="/api/head/${encodeURIComponent(n)}.png"`+
+      ` alt="" title="${esc(n)}" loading="lazy">`).join('');
+    const more = names.length > shown.length
+      ? `<span class="more">+${names.length - shown.length}</span>` : '';
+    return `<span class="head-row">${heads}${more}</span>`;
+  }
+
+  function cardHtml(sv){
+    let big;
+    if(sv.state==='online'){
+      big = `${sv.playersOnline}<small>/${sv.playersMax ?? '?'} Spieler</small>`;
+    } else if(sv.state==='stopped'){
+      big = `<small>bereit · pausiert</small>`;
+    } else {
+      big = `<small>nicht erreichbar</small>`;
+    }
+    const subs=[];
+    if(sv.version) subs.push(esc(sv.version));
+    const heads = sv.playerNames?.length ? headRowHtml(sv.playerNames) : '';
+    const ic=CARD_ICONS[sv.id]||CARD_ICONS.survival;
+    return `
+<article class="mc-card state-${esc(sv.state)}" data-world="${esc(sv.id)}">
+  <span class="lamp ${lampCls(sv.state)}"></span>
+  <h3><img class="card-icon" src="${ic}" alt="" draggable="false">${esc(sv.label)}</h3>
+  <div class="big">${big}</div>
+  <span class="state-word">${stateWord(sv.state)}</span>
+  ${heads}
+  <div class="sub">${subs.length?('// '+subs.join(' · ')):''}</div>
+</article>`;
+  }
+
+  function netBarHtml(net){
+    const subs=[];
+    if(net.state==='online'){
+      subs.push(`<b>${net.playersOnline}</b><small>&nbsp;/ ${net.playersMax ?? '?'} im Netz</small>`);
+    } else if(net.state==='stopped'){
+      subs.push('<b>pausiert</b>');
+    } else {
+      subs.push('<b>nicht erreichbar</b>');
+    }
+    if(net.version) subs.push(esc(net.version));
+    return `
+<div class="net-bar-inner state-${esc(net.state)}">
+  <span class="lamp ${lampCls(net.state)}"></span>
+  <img class="net-icon" src="${CARD_ICONS.network}" alt="" draggable="false">
+  <span>NETZWERK&nbsp;<small>// spieler-eingang (haustür)</small></span>
+  <span>${subs.join('&nbsp;&nbsp;·&nbsp;&nbsp;')}</span>
+</div>`;
+  }
+
+  // Draw elbow connectors from the network pill bottom-edge to each world
+  // card's top-center. Geometry-relative, redrawn on resize/reflow.
+  function drawFlow(){
+    const svg=document.getElementById('flowLines');
+    const head=document.querySelector('#netBar .net-bar-inner');
+    const wrap=document.getElementById('topologyWrap');
+    if(!svg||!head||!wrap) return;
+    const wb=wrap.getBoundingClientRect();
+    const hb=head.getBoundingClientRect();
+    const startX=hb.left+hb.width/2-wb.left;
+    const startY=hb.bottom-wb.top;
+    let html='', live=false;
+    wrap.querySelectorAll('.mc-card[data-world]').forEach(card=>{
+      const cb=card.getBoundingClientRect();
+      const cx=cb.left+cb.width/2-wb.left;
+      const cy=cb.top-wb.top;
+      const midY=startY+(cy-startY)*0.5;
+      const d=`M ${startX} ${startY} L ${startX} ${midY} L ${cx} ${midY} L ${cx} ${cy}`;
+      const cls=card.classList.contains('state-online')?'live':'';
+      if(cls) live=true;
+      html+=`<path d="${d}" class="${cls}"/>`;
+      // arrowhead pointing into the card top
+      html+=`<polygon class="head" points="${cx-4},${cy-7} ${cx+4},${cy-7} ${cx},${cy}"/>`;
+    });
+    svg.setAttribute('viewBox',`0 0 ${wb.width} ${wb.height}`);
+    svg.innerHTML=html;
+    void svg.offsetWidth; // restart dash animation cleanly on redraw
+  }
+  window.addEventListener('resize',drawFlow);
+  if(window.ResizeObserver){
+    new ResizeObserver(drawFlow).observe(document.getElementById('topologyWrap'));
+  }
+  document.fonts?.ready.then(drawFlow);
+
+  function stamp(iso){
+    try{
+      return '// stand ' + new Date(iso*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    }catch(_){ return ''; }
+  }
+
+  async function refresh(){
+    try{
+      const r=await fetch('/api/status/minecraft',{credentials:'same-origin'});
+      if(!r.ok) throw new Error('http '+r.status);
+      const data=await r.json();
+      const worlds=data.servers.filter(s=>s.kind!=='network');
+      const nets =data.servers.filter(s=>s.kind==='network');
+      grid.innerHTML = worlds.map(cardHtml).join('');
+      netBar.innerHTML = nets.map(netBarHtml).join('');
+      const merged=[...new Set(
+        [].concat(worlds, nets).flatMap(s => s.playerNames || []))];
+      strip.innerHTML =
+        `<span class="ol-label">GERADE ONLINE</span>`+
+        (merged.length
+          ? `<b>${merged.length}</b>` + headRowHtml(merged)
+          : `<span class="more">// niemand im netz</span>`);
+      drawFlow();
+      meta.textContent = stamp(data.checkedAt) +
+        ' · auto-refresh alle '+(data.nextRefreshSec)+' s';
+      setTimeout(refresh,(data.nextRefreshSec||20)*1000+500);
+    }catch(e){
+      meta.textContent='// status momentan nicht verfügbar';
+      setTimeout(refresh,30000);
+    }
+  }
+  // Nav-Adaption: eingeloggt => Chip + Logout statt Login-Button.
+  (async()=>{
+    const dash=document.getElementById('navDash'),
+          login=document.getElementById('navLogin');
+    try{
+      const r=await fetch('/api/me',{credentials:'same-origin'});
+      if(!r.ok) return;                       // anonymous: unchanged
+      const me=(await r.json()).user;
+      login.style.display='none';
+      dash.style.display='';
+      // Profile chip with avatar so the nickname reads as a PERSON,
+      // not as another nav item (avoid confusion with the Admin link).
+      dash.innerHTML =
+        `<img src="/avatar/${encodeURIComponent(me.nickname)}.png" alt="" `+
+        `style="width:18px;height:18px;image-rendering:pixelated;`+
+        `vertical-align:-4px;margin-right:6px;background:#0b0e12;">`+
+        esc(me.nickname);
+      // Primary CTA switches to the account area (where invites live).
+      const cta=document.getElementById('ctaMain');
+      if(cta){cta.href='/dashboard.html';cta.textContent='Mein Konto · Einladungen';}
+      if(me.role==='admin'){
+        const adm=document.createElement('a');
+        adm.href='/admin'; adm.textContent='Admin';
+        adm.className='hide-mobile';
+        login.parentNode.insertBefore(adm,login);
+      }
+      const out=document.createElement('a');
+      out.href='#'; out.textContent='Logout';
+      out.addEventListener('click',async ev=>{
+        ev.preventDefault();
+        try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'});}catch(_){}
+        location.href='/login';
+      });
+      login.parentNode.appendChild(out);
+    }catch(_){/* anonymous */}
+  })();
+
+  // ----- ping test -----
+  const pingBtn=document.getElementById('pingBtn');
+  const pingHint=document.getElementById('pingHint');
+  const pingResults=document.getElementById('pingResults');
+
+  function median(arr){
+    const s=[...arr].sort((a,b)=>a-b);
+    return s[Math.floor(s.length/2)];
+  }
+
+  async function measureOnce(url){
+    const t0=performance.now();
+    await fetch(url,{cache:'no-store',credentials:url.startsWith('/')?'same-origin':'omit'});
+    return performance.now()-t0;
+  }
+
+  async function measureMedian(url,samples=5){
+    const vals=[];
+    for(let i=0;i<samples;i++){
+      try{ vals.push(await measureOnce(url)); }
+      catch(_){ return null; }
+      await new Promise(res=>setTimeout(res,120));
+    }
+    return Math.round(median(vals));
+  }
+
+  function verdict(ms){
+    if(ms==null) return '';
+    if(ms<60) return 'good';
+    if(ms<110) return 'warn';
+    return '';
+  }
+
+  pingBtn.addEventListener('click', async ()=>{
+    pingBtn.disabled=true;
+    pingHint.textContent='// messe … (5 samples pro Route)';
+    pingResults.classList.remove('show');
+    pingResults.innerHTML='';
+    try{
+      const cfg=await (await fetch('/api/ping/beacons')).json();
+      const routes=(cfg.beacons||[]);
+      const cells=await Promise.all(routes.map(async rt=>{
+        const ms=await measureMedian(rt.url);
+        return {id:rt.id,label:rt.label,ms,type:'beacon',url:rt.url};
+      }));
+      // RZ route: the beacon terminates at the RS (never traverses the
+      // tunnel), so the measured tunnel transit completes the picture.
+      // Door route needs NO additive term — it IS the player route.
+      const doorCell=cells.find(c=>c.id==='door'&&c.ms!=null);
+      const rzCell=cells.find(c=>c.id==='rz'&&c.ms!=null);
+      const tunnelEst=cfg.estimate&&typeof cfg.estimate.measuredTunnelMs==='number'
+        ? cfg.estimate.measuredTunnelMs : null;
+      const estBase=tunnelEst!=null?tunnelEst:null;
+      const estRows=[];
+      if(doorCell) estRows.push(`
+<div class="ping-route">
+  <span class="lbl">Direkt zum Spiele-Server<br>(Haustür, wie der Client)</span>
+  <span class="val ${verdict(doorCell.ms)}">${doorCell.ms} ms</span>
+</div>`);
+      if(rzCell&&estBase!=null) estRows.push(`
+<div class="ping-route">
+  <span class="lbl">Umleitung über RZ Nürnberg<br>(bis RZ + VPN-Tunnel)</span>
+  <span class="val ${verdict(rzCell.ms+estBase)}">${rzCell.ms+estBase} ms*</span>
+</div>`);
+      pingResults.innerHTML = cells.map(c=>`
+<div class="ping-route">
+  <span class="lbl">${esc(c.label)}</span>
+  <span class="val ${verdict(c.ms)}">${c.ms==null?'—':c.ms+' ms'}</span>
+</div>`).join('')
+      +estRows.join('');
+      pingResults.classList.add('show');
+      pingHint.textContent=rzCell
+        ?('* Umleitung: Messung endet am RZ (Browser→Nürnberg) + gemessene ')
+          +'Tunnel-Transit bis zum Spiele-Server'+(estBase==null?', Tunnel nicht messbar':'')
+        :(doorCell
+          ?'* Haustür-Beacon misst exakt die Client-Route.'
+          :'* keine Route messbar.');
+    }catch(e){
+      pingHint.textContent='// ping-test fehlgeschlagen';
+    }finally{
+      pingBtn.disabled=false;
+    }
+  });
+
+  // ----- mods showcase -----
+  (async()=>{
+    const host=document.getElementById('modShowcase');
+    const foot=document.getElementById('modsFootnote');
+    try{
+      const data=await (await fetch('/mods.json',{credentials:'same-origin'})).json();
+      host.innerHTML=data.categories.map(cat=>`
+<h3 class="mod-cat-label">${esc(cat.label)} (${cat.mods.length})</h3>
+<div class="mod-grid">
+${cat.mods.map(m=>`
+  <article class="mod-card">
+    <h4>${esc(m.name)}
+      <span class="mod-side ${esc(m.sideClass)}">${esc(m.sideBadge)}</span>
+    </h4>
+    ${m.tip?`<p class="mod-tip">${esc(m.tip)}</p>`:''}
+    ${m.clientHelp?`<p class="mod-help">// ${esc(m.clientHelp)}</p>`:''}
+  </article>`).join('')}
+</div>`).join('');
+      foot.textContent=`// ${data.totals.active} aktive mods · generiert aus `+
+        `${data.generatedFrom} · deaktiviert: ${data.totals.disabled}`;
+    }catch(_){
+      host.innerHTML='<p class="mod-tip">Modliste momentan nicht ladbar.</p>';
+    }
+  })();
+
+  // ----- statistics teaser (figures only; full experience on /stats) -----
+  (async()=>{
+    const figs=document.getElementById('statFigures');
+    async function loadStats(){
+      try{
+        const d=await (await fetch('/api/stats/community',{credentials:'same-origin'})).json();
+        const cm=d.community, ig=d.activity;
+        const figureDefs=[
+          [cm.membersActive,'Mitglieder'],
+          [cm.whitelistedPlayers,'Whitelisted'],
+          [cm.joinedLastWeek,'Neu (7 Tage)'],
+          [ig.peaks.network,'Peak 24 h'],
+          [Math.round(cm.activeSessions),'Aktive Sitzungen'],
+        ];
+        figs.innerHTML=figureDefs.map(([v,l])=>`
+<div class="figure"><div class="num">${esc(v)}</div><div class="lbl">${esc(l)}</div></div>`).join('');
+        setTimeout(loadStats,120000);
+      }catch(_){
+        figs.innerHTML='<div class="figure"><div class="num">–</div>'+
+          '<div class="lbl">statistiken momentan nicht verfügbar</div></div>';
+        setTimeout(loadStats,120000);
+      }
+    }
+    loadStats();
+  })();
+
+  refresh();
+})();
+</script>
+
+</body>
+</html>

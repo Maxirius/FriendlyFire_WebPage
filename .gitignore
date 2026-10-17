@@ -1,0 +1,16 @@
+# Secrets niemals committen!
+*.env
+*.secret
+*_secret*
+
+# Generierte Mojang-Assets bewusst NICHT getrackt
+website/assets/icons/
+website/assets/advancements.json
+
+# Locals
+__pycache__/
+.pytest_cache/
+server/*.db
+server/*.db-*
+server/data/
+.DS_Store

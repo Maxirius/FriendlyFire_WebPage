@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Passwort vergessen · FriendlyFire Minecraft</title>
+
+<link rel="stylesheet" href="/assets/site.css?v=2">
+</head>
+<body>
+<script src="/assets/auth-bg.js?v=2" defer></script>
+
+<header class="top">
+  <div class="wrap nav">
+    <!-- PLACEHOLDER: wordmark = technisch bis Markenname steht -->
+    <a class="wordmark" href="/">MC.<em>MAX-KUEHN</em>.COM</a>
+    <nav class="userarea"></nav>
+  </div>
+</header>
+
+<main class="center-shell">
+  <form class="card" id="fpForm" method="post">
+    <div class="brand-mark">FRIENDLY<b>FIRE</b> · SPIELERBEREICH</div>
+    <h1>Passwort vergessen</h1>
+    <p class="sub">Wir schicken dir einen Wiederherstellungslink — gültig für
+      30 Minuten.</p>
+
+    <div class="field">
+      <label for="email">E-Mail</label>
+      <input type="email" id="email" required autofocus>
+    </div>
+
+    <button class="btn" type="submit" id="submitBtn">Link anfordern</button>
+    <p class="form-msg" id="msg" role="alert"></p>
+
+    <div class="alt-row">
+      <a href="/login">← Zurück zur Anmeldung</a>
+    </div>
+  </form>
+</main>
+
+<script>
+document.getElementById('fpForm').addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  const btn=document.getElementById('submitBtn');
+  const msg=document.getElementById('msg');
+  btn.disabled=true;msg.className='form-msg';msg.textContent='';
+  try{
+    const r=await fetch('/api/forgot-password',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:document.getElementById('email').value.trim()}),
+    });
+    if(r.ok){
+      msg.textContent='Wenn die Adresse bei uns registriert ist, ist das Mail unterwegs.';
+      msg.classList.add('ok');
+      setTimeout(()=>{location.href='/login'},4000);
+    }else{
+      msg.textContent='Anfrage fehlgeschlagen — bitte später erneut versuchen.';
+      msg.classList.add('err');
+    }
+  }catch(_){
+    msg.textContent='Netzwerkfehler — bitte erneut versuchen.';
+    msg.classList.add('err');
+  }finally{btn.disabled=false;}
+});
+</script>
+
+</body>
+</html>

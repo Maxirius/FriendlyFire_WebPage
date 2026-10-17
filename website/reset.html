@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neues Passwort setzen · FriendlyFire Minecraft</title>
+
+<link rel="stylesheet" href="/assets/site.css?v=2">
+</head>
+<body>
+<script src="/assets/auth-bg.js?v=2" defer></script>
+
+<header class="top">
+  <div class="wrap nav">
+    <!-- PLACEHOLDER: wordmark = technisch bis Markenname steht -->
+    <a class="wordmark" href="/">MC.<em>MAX-KUEHN</em>.COM</a>
+    <nav class="userarea"></nav>
+  </div>
+</header>
+
+<main class="center-shell">
+  <form class="card" id="rpForm" method="post">
+    <div class="brand-mark">FRIENDLY<b>FIRE</b> · SPIELERBEREICH</div>
+    <h1>Neues Passwort</h1>
+    <p class="sub" id="tokState">Prüfe Wiederherstellungslink …</p>
+
+    <div class="field">
+      <label for="np">Neues Passwort <span style="opacity:.7">(mind. 10 Zeichen)</span></label>
+      <input type="password" id="np" minlength="10" required>
+    </div>
+
+    <button class="btn" type="submit" id="submitBtn" disabled>Speichern & anmelden</button>
+    <p class="form-msg" id="msg" role="alert"></p>
+
+    <div class="alt-row">
+      <a href="/login">← Zur Anmeldung</a>
+    </div>
+  </form>
+</main>
+
+<script>
+const ERRORS={
+  invalid_token:'Dieser Link ist ungültig oder abgelaufen — fordere ein neues Mail an.',
+  weak_password:'Das Passwort ist zu kurz (mind. 10 Zeichen).',
+  rate_limited:'Zu viele Versuche — bitte kurz warten.',
+};
+const params=new URLSearchParams(location.search);
+const token=params.get('token')||'';
+const tokState=document.getElementById('tokState');
+const btn=document.getElementById('submitBtn');
+
+if(!token){
+  tokState.innerHTML='<b style="color:var(--danger)">Kein Token gefunden.</b> Nutze den Link aus dem Mail.';
+}else{
+  tokState.textContent='Token erkannt — setze unten dein neues Passwort.';
+  btn.disabled=false;
+}
+
+document.getElementById('rpForm').addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  btn.disabled=true;
+  const msg=document.getElementById('msg');
+  msg.className='form-msg';msg.textContent='';
+  try{
+    const r=await fetch('/api/reset-password',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token,newPassword:document.getElementById('np').value}),
+    });
+    if(r.ok){location.href='/';return;}
+    const err=(await r.json().catch(()=>null))?.detail?.code;
+    msg.textContent=ERRORS[err]||'Zurücksetzen fehlgeschlagen.';
+    msg.classList.add('err');
+  }catch(_){
+    msg.textContent='Netzwerkfehler — bitte erneut versuchen.';
+    msg.classList.add('err');
+  }finally{btn.disabled=!token;}
+});
+</script>
+
+</body>
+</html>

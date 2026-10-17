@@ -1,0 +1,30 @@
+# Reference snippet: services to ADD to /opt/hostings/docker-compose.yaml
+# (deployment script inserts them programmatically; this file documents the
+# intended shape for review).
+#
+# Changes versus stock:
+#   1. NEW service minecraft-auth (build from repo server/)
+#   2. minecraft-site gains the gated default.conf bind mount
+
+  minecraft-auth:
+    build: ./minecraft_auth/build
+    image: friendlyfire-auth:latest
+    container_name: minecraft_auth
+    restart: unless-stopped
+    env_file: ./minecraft_auth/auth.env
+    volumes:
+    - ./minecraft_auth/data:/data
+    - ./minecraft_site/site:/srv/web:ro
+    networks:
+    - docker_network
+
+  minecraft-site:
+    image: nginxinc/nginx-unprivileged:latest
+    container_name: minecraft_site
+    restart: always
+    volumes:
+    - ./minecraft_site/site:/usr/share/nginx/html
+    - ./minecraft_site/conf/site-default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+    - docker_network
+    user: ${H_UID}:${H_GID}
