@@ -7,15 +7,25 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/site.css?v=2">
 <style>
 .logo-lock{width:44px;height:44px;border:1px solid var(--border);
   background:var(--panel-2);display:flex;align-items:center;justify-content:center;
   margin-bottom:20px;}
 .logo-lock svg{color:var(--amber);}
+.testphase-banner{
+  border:1px dashed var(--amber);
+  background:rgba(255,195,92,.07);
+  padding:10px 14px;
+  font-size:13px;
+  line-height:1.5;
+  color:var(--amber);
+}
+.testphase-banner strong{text-transform:uppercase;letter-spacing:.06em;}
 </style>
 </head>
 <body>
+<script src="/assets/auth-bg.js?v=2" defer></script>
 
 <header class="top">
   <div class="wrap nav">
@@ -34,6 +44,10 @@
         <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2"/>
         <circle cx="12" cy="15.5" r="1.6" fill="currentColor"/>
       </svg>
+    </div>
+    <div class="testphase-banner">
+      <strong>Testphase:</strong> Diese Seite befindet sich noch im Aufbau —
+      es können vereinzelt Fehler auftreten.
     </div>
     <h1>Anmelden</h1>
     <p class="sub">Mit deinem Community-Account einloggen.</p>
