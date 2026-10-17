@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.LoginEvent;
+import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
@@ -31,10 +32,12 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Pull-based whitelist bridge: periodically fetches the authoritative
@@ -52,7 +55,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Plugin(id = "ffwhitelistsync",
         name = "FfWhitelistSync",
-        version = "1.0.0",
+        version = "1.1.0",
         description = "Authoritative whitelist pulled from the FriendlyFire account service",
         authors = {"FriendlyFire"})
 public final class FfWhitelistSync {
@@ -73,6 +76,9 @@ public final class FfWhitelistSync {
     private Duration interval;
     private Path whitelistJson;
 
+    /** Persistent uuid -> last-server map backing the join-routing memory. */
+    private Path lastServersJson;
+
     @Inject
     public FfWhitelistSync(ProxyServer proxy, Logger logger,
                            @DataDirectory Path dataDir) {
@@ -91,6 +97,7 @@ public final class FfWhitelistSync {
         }
 
         preloadLocalCache();
+        loadLastServers();
 
         http = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
@@ -110,6 +117,9 @@ public final class FfWhitelistSync {
         // presence heartbeat: keep the website's live-player list fresh
         scheduler.scheduleWithFixedDelay(this::safeReportPresence,
                 8, 20, TimeUnit.SECONDS);
+        // lazy writer for the remembered last-server map
+        scheduler.scheduleWithFixedDelay(this::flushLastServersIfNeeded,
+                5, 5, TimeUnit.SECONDS);
         logger.info("FfWhitelistSync active: pulling {} every {}s",
                 feedUri.getHost(), period);
     }
@@ -117,6 +127,7 @@ public final class FfWhitelistSync {
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         if (scheduler != null) {
+            flushLastServersIfNeeded();
             scheduler.shutdownNow();
         }
     }
@@ -132,6 +143,9 @@ public final class FfWhitelistSync {
     @Subscribe
     public void onConnected(com.velocitypowered.api.event.player.ServerConnectedEvent event) {
         joinTimes.put(event.getPlayer().getUniqueId(), System.currentTimeMillis());
+        lastServers.put(event.getPlayer().getUniqueId(),
+                event.getServer().getServerInfo().getName());
+        lastServersDirty.set(true);
         reportPresenceSoon();
     }
 
@@ -168,6 +182,104 @@ public final class FfWhitelistSync {
                 presenceHealthy = false;
             }
         }
+    }
+
+    // ------------------------------------------------------------------------
+    // Remember-last-server routing
+    //
+    // Every successful backend connection records the player's server in a
+    // persisted map; on the NEXT initial join (choose-initial-server phase,
+    // i.e. before the try-list decides) the remembered server is selected.
+    // Explicit /server switches flow through untouched — only the entry
+    // point honours the memory, so a player who leaves on creative rejoins
+    // on creative instead of falling back to the try-order default.
+    // ------------------------------------------------------------------------
+
+    /** uuid (dashed) -> server name, mirrored to last-servers.json. */
+    private final java.util.Map<UUID, String> lastServers =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private final AtomicBoolean lastServersDirty = new AtomicBoolean(false);
+
+    private void loadLastServers() {
+        try {
+            if (!Files.exists(lastServersJson)) {
+                return;
+            }
+            JsonObject root = JsonParser.parseReader(
+                            Files.newBufferedReader(lastServersJson,
+                                    StandardCharsets.UTF_8))
+                    .getAsJsonObject();
+            for (var entry : root.entrySet()) {
+                try {
+                    lastServers.put(UUID.fromString(entry.getKey()),
+                            entry.getValue().getAsString());
+                } catch (IllegalArgumentException badEntry) {
+                    logger.warn("last-servers.json: skipping corrupt "
+                            + "entry {}", entry.getKey());
+                }
+            }
+            logger.info("loaded {} remembered last-server mappings",
+                    lastServers.size());
+        } catch (Exception e) {
+            logger.warn("could not load last-servers.json: {}", e.toString());
+        }
+    }
+
+    /**
+     * Flushes the remembered map when marked dirty. Runs on the shared
+     * scheduler thread (small file, low frequency — contention irrelevant);
+     * dirty-clear-before-write guarantees a late mutation triggers another
+     * flush instead of being swallowed.
+     */
+    private void flushLastServersIfNeeded() {
+        if (!lastServersDirty.compareAndSet(true, false)) {
+            return;
+        }
+        try {
+            java.util.Map<String, String> ordered = new TreeMap<>();
+            for (var e : lastServers.entrySet()) {
+                ordered.put(e.getKey().toString(), e.getValue());
+            }
+            JsonObject root = new JsonObject();
+            for (var e : ordered.entrySet()) {
+                root.addProperty(e.getKey(), e.getValue());
+            }
+            Path tmp = lastServersJson.resolveSibling(
+                    lastServersJson.getFileName() + ".tmp");
+            Files.writeString(tmp, root.toString() + "\n",
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING);
+            try {
+                Files.move(tmp, lastServersJson,
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tmp, lastServersJson,
+                        StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (Exception e) {
+            lastServersDirty.set(true); // retry on the next tick
+            logger.warn("persisting last-servers.json failed: {}",
+                    e.toString());
+        }
+    }
+
+    @Subscribe
+    public void onChooseInitialServer(PlayerChooseInitialServerEvent event) {
+        String remembered = lastServers.get(event.getPlayer().getUniqueId());
+        if (remembered == null) {
+            return; // first-ever visit: default try-order applies
+        }
+        proxy.getServer(remembered).ifPresentOrElse(target -> {
+            event.setInitialServer(target);
+            logger.info("routing {} to remembered server '{}'",
+                    event.getPlayer().getUsername(), remembered);
+        }, () -> logger.warn(
+                "remembered server '{}' no longer registered for {}; "
+                        + "using default try-order", remembered,
+                event.getPlayer().getUsername()));
     }
 
     private void reportPresence() throws IOException, InterruptedException {
@@ -352,6 +464,7 @@ public final class FfWhitelistSync {
         feedUri = URI.create(urlProp);
         authToken = token;
         interval = Duration.ofSeconds(secs);
+        lastServersJson = dataDir.resolve("last-servers.json");
         whitelistJson = dataDir.getParent()
                 .resolve("global-whitelist")
                 .resolve("whitelist.json");
