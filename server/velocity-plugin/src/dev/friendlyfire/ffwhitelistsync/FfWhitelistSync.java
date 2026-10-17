@@ -130,7 +130,7 @@ public final class FfWhitelistSync {
     private volatile boolean presenceHealthy = true;
 
     @Subscribe
-    public void onConnected(com.velocitypowered.api.event.connection.ConnectedEvent event) {
+    public void onConnected(com.velocitypowered.api.event.player.ServerConnectedEvent event) {
         joinTimes.put(event.getPlayer().getUniqueId(), System.currentTimeMillis());
         reportPresenceSoon();
     }
