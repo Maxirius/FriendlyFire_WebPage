@@ -70,6 +70,13 @@ CREATE TABLE IF NOT EXISTS whitelist_extras (
   created_at REAL NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS player_heads (
+  uuid       TEXT PRIMARY KEY,         -- hex, no dashes
+  name       TEXT NOT NULL,
+  avatar     BLOB,
+  fetched_at REAL NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS audit (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   ts         REAL NOT NULL,

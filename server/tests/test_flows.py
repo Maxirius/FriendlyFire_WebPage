@@ -33,8 +33,8 @@ def fresh_db(monkeypatch):
     dbm.init()
     yield dbm
     conn = dbm.connect()
-    for table in ("audit", "whitelist_extras", "resets", "invites",
-                  "sessions", "users", "meta"):
+    for table in ("audit", "player_heads", "whitelist_extras", "resets",
+                  "invites", "sessions", "users", "meta"):
         conn.execute(f"DROP TABLE IF EXISTS {table}")
     conn.commit()
     conn.close()
@@ -552,6 +552,95 @@ async def test_sync_feed_and_extras(app_module, client_factory, fake_mojang,
         uuids_left = [e["uuid"] for e in r.json()["entries"]]
         assert "eeeeffffgggghhhh1111222233334444" not in uuids_left
         assert "aaaabbbbccccdddd0000111122223333" in uuids_left
+
+
+@pytest.mark.anyio
+async def test_live_player_heads(app_module, client_factory, fake_mojang,
+                                 fake_avatar):
+    """Registered users serve their cached avatar; unknown names resolve
+    via Mojang and land in the player_heads cache."""
+    import db as dbm
+    import security as sec
+    conn = dbm.connect()
+    tx = dbm.Database(conn)
+    tx.run("INSERT INTO users(email,pw_hash,nickname,nickname_uuid,avatar,"
+           "role,invites_enabled,created_at) VALUES(?,?,?,?,?,?,1,?)",
+           "heady@test.example", sec.hash_password("heady-pass-12345"),
+           "Cached_Kid",
+           "11112222333344445555666677778888", b"CACHEDPNG", "member",
+           dbm.now())
+    session_raw = app_module.create_session(tx, tx.one(
+        "SELECT id FROM users WHERE email=?", "heady@test.example")["id"])
+    tx.commit()
+    conn.close()
+
+    async with client_factory() as c:
+        # anonymous -> 401 (site is members-only)
+        r = await c.get("/api/head/Cached_Kid.png")
+        assert r.status_code == 401
+
+        c.cookies.set("ff_session", session_raw)
+
+        # registered user -> cached avatar blob, no Mojang call needed
+        r = await c.get("/api/head/Cached_Kid.png")
+        assert r.status_code == 200
+        assert r.content == b"CACHEDPNG"
+        assert r.headers["content-type"] == "image/png"
+
+        # unknown name -> mojang resolve + fetch + cache
+        r = await c.get("/api/head/Newbie_Guy.png")
+        assert r.status_code == 200
+        assert r.content == b"\x89PNG\r\n\x1a\n" + b"x" * 40
+
+        import db as dbm2
+        conn = dbm2.connect()
+        row = conn.execute(
+            "SELECT name, avatar FROM player_heads").fetchone()
+        conn.close()
+        assert row[0] == "Newbie_guy"   # canonical casing from mojang mock
+        assert row[1] == b"\x89PNG\r\n\x1a\n" + b"x" * 40
+
+        # nonsense name -> rejected before any lookup
+        r = await c.get("/api/head/ab.png")
+        assert r.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_presence_pipeline_feeds_status(app_module, client_factory):
+    """Fake plugin heartbeat -> presence snapshot -> status overlay."""
+    import presence
+
+    good = {"Authorization": "Bearer test-sync-token"}
+    async with client_factory() as c:
+        # unauthenticated -> rejected
+        r = await c.post("/api/sync/players", json={"players": []})
+        assert r.status_code == 403
+
+        # valid heartbeat with two players
+        r = await c.post("/api/sync/players", json={"players": [
+            {"name": "Alice_Play", "uuid": "a" * 32,
+             "server": "survival", "since": 1000.0},
+            {"name": "Bob_Build", "uuid": "b" * 32,
+             "server": "creative", "since": 2000.0},
+        ]}, headers=good)
+        assert r.status_code == 200
+
+        snap = presence.snapshot()
+        assert snap["fresh"] is True
+        assert len(snap["players"]) == 2
+
+        # malformed entries are sanitized, not fatal
+        r = await c.post("/api/sync/players", json={"players": [
+            {"name": "", "uuid": "x"},                # dropped
+            {"name": "Carl_Q", "uuid": "c" * 32, "server": "survival"},
+        ]}, headers=good)
+        assert r.status_code == 200
+        snap = presence.snapshot()
+        assert [p["name"] for p in snap["players"]] == ["Carl_Q"]
+
+        # stale after TTL -> overlay backs off
+        presence.update([], ts=0)
+        assert presence.snapshot()["fresh"] is False
 
 
 @pytest.mark.anyio

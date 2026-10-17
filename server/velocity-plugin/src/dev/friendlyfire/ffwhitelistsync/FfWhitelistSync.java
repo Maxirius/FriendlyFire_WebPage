@@ -9,6 +9,7 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
+import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -106,6 +107,9 @@ public final class FfWhitelistSync {
         long period = Math.max(15, interval.getSeconds());
         scheduler.scheduleWithFixedDelay(this::safeRefresh,
                 firstDelay, period, TimeUnit.SECONDS);
+        // presence heartbeat: keep the website's live-player list fresh
+        scheduler.scheduleWithFixedDelay(this::safeReportPresence,
+                8, 20, TimeUnit.SECONDS);
         logger.info("FfWhitelistSync active: pulling {} every {}s",
                 feedUri.getHost(), period);
     }
@@ -118,12 +122,99 @@ public final class FfWhitelistSync {
     }
 
     // ------------------------------------------------------------------------
+    // Presence reporting (who is live on the network, incl. server assoc.)
+    // ------------------------------------------------------------------------
+    private final java.util.Map<UUID, Long> joinTimes =
+        new java.util.concurrent.ConcurrentHashMap<>();
+
+    private volatile boolean presenceHealthy = true;
+
+    @Subscribe
+    public void onConnected(com.velocitypowered.api.event.connection.ConnectedEvent event) {
+        joinTimes.put(event.getPlayer().getUniqueId(), System.currentTimeMillis());
+        reportPresenceSoon();
+    }
+
+    @Subscribe
+    public void onDisconnect(com.velocitypowered.api.event.connection.DisconnectEvent event) {
+        joinTimes.remove(event.getPlayer().getUniqueId());
+        reportPresenceSoon();
+    }
+
+    @Subscribe
+    public void onServerSwitch(com.velocitypowered.api.event.player.ServerPreConnectEvent event) {
+        // after the switch completes, the heartbeat picks the new server up;
+        // report immediately for snappy UI updates
+        event.getResult().getServer().ifPresent(rs ->
+            scheduler.schedule(this::safeReportPresence, 1, TimeUnit.SECONDS));
+    }
+
+    private void reportPresenceSoon() {
+        if (scheduler != null && !scheduler.isShutdown()) {
+            scheduler.schedule(this::safeReportPresence, 500,
+                    TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private void safeReportPresence() {
+        try {
+            reportPresence();
+            presenceHealthy = true;
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            if (presenceHealthy) {
+                logger.warn("presence report failed: {}", e.toString());
+                presenceHealthy = false;
+            }
+        }
+    }
+
+    private void reportPresence() throws IOException, InterruptedException {
+        com.google.gson.JsonObject root = new com.google.gson.JsonObject();
+        com.google.gson.JsonArray arr = new com.google.gson.JsonArray();
+        for (Player p : proxy.getAllPlayers()) {
+            com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+            o.addProperty("name", p.getUsername());
+            o.addProperty("uuid", p.getUniqueId().toString().replace("-", ""));
+            String server = p.getCurrentServer()
+                    .map(sc -> sc.getServerInfo().getName())
+                    .orElse("");
+            o.addProperty("server", server);
+            Long since = joinTimes.get(p.getUniqueId());
+            o.addProperty("since", since == null ? 0 : since / 1000.0);
+            arr.add(o);
+        }
+        root.add("players", arr);
+
+        HttpRequest req = HttpRequest.newBuilder(
+                    feedUri.resolve("/api/sync/players"))
+                .timeout(Duration.ofSeconds(8))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + authToken)
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        root.toString(), StandardCharsets.UTF_8))
+                .build();
+        HttpResponse<String> resp =
+                http.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new IllegalStateException(
+                    "presence endpoint answered " + resp.statusCode());
+        }
+    }
+
+    // ------------------------------------------------------------------------
     // Enforcement
     // ------------------------------------------------------------------------
     @Subscribe
     public void onLogin(LoginEvent event) {
         UUID id = event.getPlayer().getUniqueId();
-        if (!allowedUuids.contains(id.toString())) {
+        // allowedUuids stores 32-char hex (no dashes) — normalize before
+        // comparing, Velocity's toString() yields the dashed form.
+        String normalized = id.toString().replace("-", "");
+        logger.info("login-check: player={} uuid-normalized={} allowed={}",
+                event.getPlayer().getUsername(), normalized, allowedUuids);
+        if (!allowedUuids.contains(normalized)) {
             event.setResult(com.velocitypowered.api.event.ResultedEvent
                     .ComponentResult.denied(Component.text(
                             "Du bist nicht freigeschaltet. Registriere dich "

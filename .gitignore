@@ -18,3 +18,7 @@ server/dev_auth.db*
 server/auth.env
 server/data/
 .pytest_cache/
+
+# dev/test databases
+server/*.db
+server/*.db-*

@@ -314,6 +314,31 @@ async def collect(force: bool = False) -> dict:
             return shape_entry(t, None, None, f"{type(exc).__name__}")
 
     entries = await asyncio.gather(*(grab(t) for t in targets))
+
+    # Overlay the proxy-reported presence (precise: full names + server
+    # association) onto the SLP picture. SLP samples are capped/ordered
+    # arbitrarily; the plugin heartbeat is the authoritative list.
+    try:
+        import presence
+        snap = presence.snapshot()
+        if snap["fresh"]:
+            all_ids = {p["name"] for p in snap["players"]}
+            for entry in entries:
+                if entry["kind"] == "network":
+                    names = sorted(all_ids)
+                    online = len(snap["players"])
+                else:
+                    subset = presence.by_server(entry["id"])
+                    names = sorted(p["name"] for p in subset)
+                    online = len(subset)
+                entry["playerNames"] = names
+                entry["playersOnline"] = online
+                if online == 0 and entry["state"] == "online":
+                    # empty but reachable: keep state, names stay empty
+                    pass
+    except Exception:
+        pass  # presence overlay must never break the status feed
+
     transit = await tcp_transit_ms(_transit_target())
     data = {
         "checkedAt": int(now),

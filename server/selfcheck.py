@@ -48,7 +48,7 @@ def main() -> int:
     # ---- pages (logged in) --------------------------------------------------
     pages_expect = {
         "/": ["serverstatus", "modShowcase", "statFigures"],
-        "/stats": ["catSidebar", "boardArea", "profileTiles"],
+        "/stats": ["catScroll", "viewBody", "viewHead"],
         "/dashboard.html": ["invPanel", "admPanel"],
         "/admin": ["usrRows", "extraRows", "scUsers"],
         "/login": [],
@@ -89,6 +89,19 @@ def main() -> int:
         r = c.get(BASE + path)
         check("api", path, r.status_code == want,
               f"http {r.status_code} (want {want})")
+
+    # ---- new stats endpoints (player profile + compare) ----------------------
+    r = c.get(BASE + "/api/stats/ingame")
+    profiles = r.json().get("profiles", []) if r.status_code == 200 else []
+    if profiles:
+        pname = profiles[0]["name"]
+        r = c.get(BASE + f"/api/stats/player/{pname}")
+        check("api", f"/api/stats/player/{pname}",
+              r.status_code == 200 and "stats" in r.text,
+              f"http {r.status_code}")
+        r = c.get(BASE + f"/api/stats/compare?a={pname}&b={pname}")
+        check("api", f"/api/stats/compare ({pname})", r.status_code == 200,
+              f"http {r.status_code}")
 
     # ---- semantic sanity on the ingame payload -------------------------------
     r = c.get(BASE + "/api/stats/ingame")

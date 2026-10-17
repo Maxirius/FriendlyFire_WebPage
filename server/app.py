@@ -611,6 +611,58 @@ async def get_avatar(nickname: str, user: CurrentUser, tx: DbDep):
                     headers={"Cache-Control": "private, max-age=60"})
 
 
+HEAD_REFETCH_S = 7 * 86400
+
+
+async def head_for_name(tx: dbm.Database, name: str) -> Optional[bytes]:
+    """Skin face for an arbitrary player name (status page live list).
+
+    Order: registered user's cached avatar -> player_heads cache (7 d)
+    -> Mojang lookup + skin fetch + face render. Stale cache is served
+    when Mojang is unreachable (availability beats freshness here).
+    """
+    row = tx.one("SELECT avatar FROM users WHERE nickname=?", name)
+    if row and row["avatar"]:
+        return row["avatar"]
+    cached = tx.one(
+        "SELECT avatar, fetched_at FROM player_heads WHERE name=?", name)
+    if cached and cached["avatar"] and \
+            dbm.now() - cached["fetched_at"] < HEAD_REFETCH_S:
+        return cached["avatar"]
+    try:
+        profile = await mojang.lookup_profile(http_client(), name)
+    except RuntimeError:
+        return cached["avatar"] if cached else None
+    if profile is None:
+        return None
+    canonical, uuid_hex = profile
+    blob = await fetch_avatar_for(uuid_hex)
+    if blob:
+        tx.run(
+            "INSERT INTO player_heads(uuid,name,avatar,fetched_at)"
+            " VALUES(?,?,?,?) ON CONFLICT(uuid) DO UPDATE SET"
+            " name=excluded.name, avatar=excluded.avatar,"
+            " fetched_at=excluded.fetched_at",
+            uuid_hex, canonical, blob, dbm.now(),
+        )
+    return blob
+
+
+@app.get("/api/head/{name}.png")
+async def player_head(name: str, request: Request, user: CurrentUser,
+                      tx: DbDep):
+    if not 3 <= len(name) <= 16:
+        raise ApiError("invalid_name", 400)
+    if sec.rate_hit("head", client_ip(request), 90, 60):
+        raise ApiError("rate_limited", 429)
+    blob = await head_for_name(tx, name)
+    if blob:
+        return Response(content=blob, media_type="image/png",
+                        headers={"Cache-Control": "private, max-age=300"})
+    return Response(content=av.placeholder_png(64), media_type="image/png",
+                    headers={"Cache-Control": "private, max-age=60"})
+
+
 # --------------------------------------------------------------------------
 # Invites
 # --------------------------------------------------------------------------
@@ -894,6 +946,24 @@ async def sync_whitelist(request: Request, tx: DbDep):
     return JSONResponse(
         {"revision": dbm.whitelist_revision(tx), "entries": entries},
         headers={"Cache-Control": "no-store"})
+
+
+class PlayerReport(BaseModel):
+    players: list
+
+
+@app.post("/api/sync/players")
+async def sync_players(report: PlayerReport, request: Request):
+    """Presence heartbeat from the Velocity plugin (bearer-guarded).
+
+    Payload: {"players": [{"name","uuid","server","since"}, ...]}
+    Stored in-memory (worker-local); /api/status/minecraft overlays it
+    onto the SLP picture while fresh (<90 s).
+    """
+    require_sync_agent(request)
+    import presence
+    presence.update(report.players)
+    return {"ok": True}
 
 
 @app.get("/ping")

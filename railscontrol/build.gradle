@@ -1,0 +1,43 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    // Local mirror: fabric maven now rejects Gradle's raw-'+' URLs; the
+    // artifacts ship from the Gradle cache instead.
+    maven { url = uri('/opt/data/cache/scratch/mvn-local') }
+    mavenCentral()
+}
+
+// Minecraft 26.1+ ships unobfuscated: no mappings block, no remapping.
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc:fabric-api:${project.fabric_version}"
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+    it.options.encoding = "UTF-8"
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}

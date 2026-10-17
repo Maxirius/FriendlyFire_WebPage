@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "tbm",
+  "version": "${version}",
+  "name": "Tunnel Boring Machine",
+  "description": "Build a variable-sized tunnel boring machine out of vanilla blocks: a piston-faced multiblock that mines tunnels (optionally lining them from barrels) fueled by an integrated generator furnace.",
+  "authors": [
+    "MaxKuehn"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.maxkuehn.tbm.TbmMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "fabric-api": "*",
+    "minecraft": "~26.3",
+    "java": ">=25"
+  }
+}

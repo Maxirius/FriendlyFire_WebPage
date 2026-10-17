@@ -261,6 +261,22 @@ section.phase-strip{
   margin-top:12px;font-family:var(--font-mono);font-size:11px;color:var(--muted);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
+
+/* ---- live player heads ---- */
+.online-strip{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  border:1px solid var(--border);background:var(--panel-2);
+  padding:10px 18px;margin-bottom:14px;
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+}
+.online-strip b{color:var(--ink);font-size:15px;}
+.ol-label{letter-spacing:.08em;}
+.head-row{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.phead{width:22px;height:22px;image-rendering:pixelated;background:#0b0e12;
+  border:1px solid var(--border);}
+.more{color:var(--muted);font-size:10px;margin-left:2px;}
+.mc-card .head-row{margin-top:12px;}
+.mc-card .phead{width:26px;height:26px;}
 .net-bar{
   position:relative;z-index:1;
   border:1px solid var(--border);background:var(--panel);
@@ -612,6 +628,10 @@ footer .tagline em{color:var(--accent);font-style:normal;}
       <span>live aus unserem Netz</span>
     </div>
     <p class="status-meta" id="statusMeta">// verbinde …</p>
+    <div class="online-strip" id="onlineStrip">
+      <span class="ol-label">GERADE ONLINE</span>
+      <span class="more">// verbinde …</span>
+    </div>
     <div class="topology" id="topologyWrap">
       <svg class="flow-lines" id="flowLines" aria-hidden="true"></svg>
       <div class="net-bar topology-head" id="netBar"></div>
@@ -691,6 +711,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
 (function(){
   const grid=document.getElementById('statusGrid');
   const meta=document.getElementById('statusMeta');
+  const strip=document.getElementById('onlineStrip');
 
   function esc(s){
     return String(s).replace(/[&<>"']/g,
@@ -712,6 +733,16 @@ document.getElementById('year').textContent = new Date().getFullYear();
     network: '/assets/icons/compass.png',
   };
 
+  function headRowHtml(names){
+    const shown = names.slice(0, 8);
+    const heads = shown.map(n =>
+      `<img class="phead" src="/api/head/${encodeURIComponent(n)}.png"`+
+      ` alt="" title="${esc(n)}" loading="lazy">`).join('');
+    const more = names.length > shown.length
+      ? `<span class="more">+${names.length - shown.length}</span>` : '';
+    return `<span class="head-row">${heads}${more}</span>`;
+  }
+
   function cardHtml(sv){
     let big;
     if(sv.state==='online'){
@@ -722,8 +753,8 @@ document.getElementById('year').textContent = new Date().getFullYear();
       big = `<small>nicht erreichbar</small>`;
     }
     const subs=[];
-    if(sv.playerNames?.length) subs.push(esc(sv.playerNames.slice(0,6).join(', ')));
     if(sv.version) subs.push(esc(sv.version));
+    const heads = sv.playerNames?.length ? headRowHtml(sv.playerNames) : '';
     const ic=CARD_ICONS[sv.id]||CARD_ICONS.survival;
     return `
 <article class="mc-card state-${esc(sv.state)}" data-world="${esc(sv.id)}">
@@ -731,6 +762,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
   <h3><img class="card-icon" src="${ic}" alt="" draggable="false">${esc(sv.label)}</h3>
   <div class="big">${big}</div>
   <span class="state-word">${stateWord(sv.state)}</span>
+  ${heads}
   <div class="sub">${subs.length?('// '+subs.join(' · ')):''}</div>
 </article>`;
   }
@@ -803,6 +835,13 @@ document.getElementById('year').textContent = new Date().getFullYear();
       const nets =data.servers.filter(s=>s.kind==='network');
       grid.innerHTML = worlds.map(cardHtml).join('');
       netBar.innerHTML = nets.map(netBarHtml).join('');
+      const merged=[...new Set(
+        [].concat(worlds, nets).flatMap(s => s.playerNames || []))];
+      strip.innerHTML =
+        `<span class="ol-label">GERADE ONLINE</span>`+
+        (merged.length
+          ? `<b>${merged.length}</b>` + headRowHtml(merged)
+          : `<span class="more">// niemand im netz</span>`);
       drawFlow();
       meta.textContent = stamp(data.checkedAt) +
         ' · auto-refresh alle '+(data.nextRefreshSec)+' s';

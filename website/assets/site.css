@@ -127,6 +127,10 @@ input:focus{border-color:var(--accent);}
   padding:11px 20px;font-size:14px;z-index:50;display:none;}
 .toast.show{display:block;}
 
+/* auth background canvas (floating blocks, see assets/auth-bg.js) */
+.bgLayer{position:fixed;inset:0;z-index:0;pointer-events:none;}
+header.top,main,footer{position:relative;z-index:1;}
+
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001s!important;
