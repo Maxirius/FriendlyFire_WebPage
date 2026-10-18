@@ -1155,10 +1155,17 @@ ${cat.mods.map(m=>`
       });
       const lg=document.getElementById('railLegend');
       if(lg){
-        document.getElementById('lgPerson').textContent=counts.person;
-        document.getElementById('lgCargo').textContent=counts.cargo;
-        document.getElementById('lgMixed').textContent=counts.mixed;
-        document.getElementById('lgNone').textContent=counts.none;
+        // Legend counts the LINES DRAWN (shared stretches count for both sides),
+        // so it matches the BlueMap marker sets one-to-one.
+        const drawn={lgPerson:counts.person+counts.mixed,
+                     lgCargo:counts.cargo+counts.mixed,
+                     lgMixed:counts.mixed,
+                     lgNone:counts.none};
+        for(const id in drawn){
+          const b=document.getElementById(id);
+          b.textContent=drawn[id];
+          b.parentElement.style.display=drawn[id]?'':'none';
+        }
         lg.hidden=false;
       }
       meta.textContent=
