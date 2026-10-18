@@ -707,7 +707,7 @@ footer .tagline em{color:var(--accent);font-style:normal;}
     <div class="rail-legend" id="railLegend" hidden>
       <span><i style="background:#22c7ff"></i>personenverkehr <b id="lgPerson">0</b></span>
       <span><i style="background:#ff8c2a"></i>warenverkehr <b id="lgCargo">0</b></span>
-      <span><i style="background:#b388ff"></i>gemischt <b id="lgMixed">0</b></span>
+      <span><span style="display:inline-flex;flex-direction:column;gap:2px"><i style="background:#22c7ff;height:2px"></i><i style="background:#ff8c2a;height:2px"></i></span>gemeinsame strecke <b id="lgMixed">0</b></span>
       <span><i style="background:#78838f"></i>ohne durchgangsverkehr <b id="lgNone">0</b></span>
       <span><i class="dot" style="background:#ffd54a"></i>personenbahnhof</span>
       <span><i class="dot" style="background:#ff5c8a"></i>güterbahnhof</span>
@@ -1106,19 +1106,37 @@ ${cat.mods.map(m=>`
       const g=el('g',{'stroke-linecap':'round'});
       svg.appendChild(g);
 
-      // tracks: one polyline per edge, coloured by the traffic that routes over it
-      const STROKE={person:'#22c7ff',cargo:'#ff8c2a',mixed:'#b388ff',none:'#78838f'};
+      // tracks: one polyline per edge, coloured by the traffic that routes over it.
+      // Shared stretches are drawn as TWO parallel lines (passenger on one side,
+      // cargo on the other) exactly like a double-track line.
+      const STROKE={person:'#22c7ff',cargo:'#ff8c2a',none:'#78838f'};
+      const OFF=Math.max(1.7,s*0.6);
       const counts={person:0,cargo:0,mixed:0,none:0};
-      wd.tracks.forEach(t=>{
-        if(!t.cells||t.cells.length<2)return;
-        const cls=STROKE[t.traffic]?t.traffic:'none';
-        counts[cls]++;
-        const pts=t.cells.map(c=>fx(c[0])+','+fz(c[2])).join(' ');
+      function shiftPts(cells,off){
+        const P=cells.map(c=>[fx(c[0]),fz(c[2])]);
+        return P.map((p,i)=>{
+          const a=P[Math.max(0,i-1)],b=P[Math.min(P.length-1,i+1)];
+          const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1;
+          return (p[0]+(-dy/L)*off)+','+(p[1]+(dx/L)*off);
+        }).join(' ');
+      }
+      function stroke(pts,colour,cls){
         g.appendChild(el('polyline',{
-          points:pts,fill:'none',stroke:STROKE[cls],
+          points:pts,fill:'none',stroke:colour,
           'stroke-opacity':cls==='none'?'0.5':'0.85',
           'stroke-width':Math.max(1.6,s*0.55),
           'stroke-linejoin':'round'}));
+      }
+      wd.tracks.forEach(t=>{
+        if(!t.cells||t.cells.length<2)return;
+        const cls=STROKE[t.traffic]?t.traffic:(t.traffic==='mixed'?'mixed':'none');
+        counts[cls]++;
+        if(cls==='mixed'){
+          stroke(shiftPts(t.cells,OFF),STROKE.person,'person');
+          stroke(shiftPts(t.cells,-OFF),STROKE.cargo,'cargo');
+        }else{
+          stroke(t.cells.map(c=>fx(c[0])+','+fz(c[2])).join(' '),STROKE[cls],cls);
+        }
       });
 
       // stations: person=gold, cargo=pink
