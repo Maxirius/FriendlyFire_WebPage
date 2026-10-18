@@ -451,6 +451,23 @@ section.phase-strip{
 .ptile .pmeta{font-family:var(--font-mono);font-size:11px;color:var(--muted);
   margin-top:2px;}
 
+/* ---------- Rail network ---------- */
+.railnet-section{
+  border-top:1px solid var(--border);
+  padding:64px 0 40px;
+}
+.rail-frame{
+  border:1px solid var(--border);
+  background:var(--panel-2);
+  padding:10px;
+}
+.rail-frame svg{display:block;width:100%;height:auto;}
+.rail-meta{
+  margin-top:12px;
+  font-family:var(--font-mono);
+  font-size:12px;color:var(--muted);
+}
+
 /* ---------- World map ---------- */
 .map-section{
   border-top:1px solid var(--border);
@@ -514,6 +531,7 @@ footer .tagline em{color:var(--accent);font-style:normal;}
       <a href="#serverstatus">Status</a>
       <a href="#mods">Mods</a>
       <a href="#statistiken-live">Statistiken</a>
+      <a href="#schienennetz">Netz</a>
       <a href="#weltkarte">Weltkarte</a>
       <a class="hide-mobile" href="/dashboard.html" id="navDash" style="display:none">Mein Konto</a>
       <a href="/login" id="navLogin">Login</a>
@@ -662,6 +680,22 @@ footer .tagline em{color:var(--accent);font-style:normal;}
     <div class="stat-figure-grid" id="statFigures"></div>
     <p class="mods-footnote" style="margin-top:18px">
       <a href="/stats" style="color:var(--accent);text-decoration:none">→ Vollständige Statistiken öffnen (alle Kategorien, Charts, Profile)</a>
+    </p>
+  </section>
+
+  <!-- RAIL NETWORK -->
+  <section class="railnet-section" id="schienennetz">
+    <div class="section-head">
+      <h2>Schienennetz</h2>
+      <span>jede schiene kartiert — automatisch aus dem spiel</span>
+    </div>
+    <div class="rail-frame">
+      <svg id="railSvg" viewBox="0 0 1000 700" role="img"
+           aria-label="Topografische Übersicht des Schienennetzes"></svg>
+    </div>
+    <p class="rail-meta" id="railMeta">// netz wird geladen …</p>
+    <p class="map-links">
+      <a href="https://map.max-kuehn.com/" target="_blank" rel="noopener">Dieses Netz live auf der Weltkarte ↗</a>
     </p>
   </section>
 
@@ -1019,6 +1053,73 @@ ${cat.mods.map(m=>`
       }
     }
     loadStats();
+  })();
+
+  // ----- rail network overview (fed by /network.json, generated on the host) -----
+  (async()=>{
+    const svg=document.getElementById('railSvg'),
+          meta=document.getElementById('railMeta');
+    const NS='http://www.w3.org/2000/svg';
+    function el(tag,attrs){
+      const e=document.createElementNS(NS,tag);
+      for(const k in attrs)e.setAttribute(k,attrs[k]);
+      return e;
+    }
+    try{
+      const d=await (await fetch('/network.json',{cache:'no-store'})).json();
+      const wd=d.dims&&(d.dims.world||Object.values(d.dims)[0]);
+      if(!wd)throw new Error('empty feed');
+      const cells=[];
+      wd.tracks.forEach(t=>t.cells.forEach(c=>{
+        if(c.length===3&&typeof c[0]==='number'&&typeof c[2]==='number')cells.push(c);
+      }));
+      if(!cells.length)throw new Error('no cells');
+      const xs=cells.map(c=>c[0]),zs=cells.map(c=>c[2]);
+      const mx=Math.min(...xs),Mx=Math.max(...xs),
+            mz=Math.min(...zs),Mz=Math.max(...zs);
+      const VW=1000,VH=700,pad=60;
+      const sx=(mx===Mx)?1:(VW-pad*2)/(Mx-mx),
+            sz=(mz===Mz)?1:(VH-pad*2)/(Mz-mz),
+            s=Math.min(sx,sz);
+      const ox=pad+(VW-pad*2-((Mx-mx)*s))/2,
+            oz=pad+(VH-pad*2-((Mz-mz)*s))/2;
+      // North (-z) points up: invert z axis.
+      const fx=x=>ox+(x-mx)*s, fz=z=>oz+(Mz-z)*s;
+      const g=el('g',{'stroke-linecap':'round'});
+      svg.appendChild(g);
+
+      // tracks: one polyline per edge, cyan, subtle glow
+      wd.tracks.forEach(t=>{
+        if(!t.cells||t.cells.length<2)return;
+        const pts=t.cells.map(c=>fx(c[0])+','+fz(c[2])).join(' ');
+        g.appendChild(el('polyline',{
+          points:pts,fill:'none',stroke:'#00beff',
+          'stroke-opacity':'0.85','stroke-width':Math.max(1.6,s*0.55),
+          'stroke-linejoin':'round'}));
+      });
+
+      // stations: person=gold, cargo=orange; termini=grey squares
+      (wd.stations||[]).forEach(st=>{
+        const cargo=st.type==='cargo';
+        const cx=fx(st.x),cy=fz(st.z);
+        g.appendChild(el('circle',{
+          cx:cx,cy:cy,r:Math.max(5,s*1.6),fill:cargo?'#ff8c2a':'#ffd54a',
+          stroke:'#000','stroke-opacity':'0.55','stroke-width':1}));
+        const lbl=el('text',{
+          x:cx+8,y:cy-8,fill:'#eee','font-size':'11',
+          'font-family':'inherit',style:'paint-order:stroke;'+
+            'stroke:#000;stroke-width:3px;'});
+        lbl.textContent=st.name||'?';
+        g.appendChild(lbl);
+      });
+      meta.textContent=
+        `// ${wd.stations?wd.stations.length:0} stationen · `+
+        `${wd.tracks.reduce((a,t)=>a+t.len,0)} schienenblöcke · `+
+        `stand ${new Date(d.generatedUtc*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`;
+    }catch(_){
+      svg.innerHTML='';
+      meta.textContent='// netzdaten momentan nicht verfügbar';
+    }
   })();
 
   refresh();
