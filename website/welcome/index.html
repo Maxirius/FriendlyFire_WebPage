@@ -1098,8 +1098,9 @@ ${cat.mods.map(m=>`
             s=Math.min(sx,sz);
       const ox=pad+(VW-pad*2-((Mx-mx)*s))/2,
             oz=pad+(VH-pad*2-((Mz-mz)*s))/2;
-      // North (-z) points up: invert z axis.
-      const fx=x=>ox+(x-mx)*s, fz=z=>oz+(Mz-z)*s;
+      // Minecraft +z points SOUTH, so the smallest z is the north edge. Screen y
+      // grows downwards: map z through (z - mz) so north ends up at the top.
+      const fx=x=>ox+(x-mx)*s, fz=z=>oz+(z-mz)*s;
       const g=el('g',{'stroke-linecap':'round'});
       svg.appendChild(g);
 
