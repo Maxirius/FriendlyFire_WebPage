@@ -1084,23 +1084,7 @@ ${cat.mods.map(m=>`
       const d=await (await fetch('/network.json',{cache:'no-store'})).json();
       const wd=d.dims&&(d.dims.world||Object.values(d.dims)[0]);
       if(!wd)throw new Error('empty feed');
-      const cells=[];
-      wd.tracks.forEach(t=>t.cells.forEach(c=>{
-        if(c.length===3&&typeof c[0]==='number'&&typeof c[2]==='number')cells.push(c);
-      }));
-      if(!cells.length)throw new Error('no cells');
-      const xs=cells.map(c=>c[0]),zs=cells.map(c=>c[2]);
-      const mx=Math.min(...xs),Mx=Math.max(...xs),
-            mz=Math.min(...zs),Mz=Math.max(...zs);
-      const VW=1000,VH=700,pad=60;
-      const sx=(mx===Mx)?1:(VW-pad*2)/(Mx-mx),
-            sz=(mz===Mz)?1:(VH-pad*2)/(Mz-mz),
-            s=Math.min(sx,sz);
-      const ox=pad+(VW-pad*2-((Mx-mx)*s))/2,
-            oz=pad+(VH-pad*2-((Mz-mz)*s))/2;
-      // Minecraft +z points SOUTH, so the smallest z is the north edge. Screen y
-      // grows downwards: map z through (z - mz) so north ends up at the top.
-      const fx=x=>ox+(x-mx)*s, fz=z=>oz+(z-mz)*s;
+      if(!(wd.tracks||[]).some(t=>t.cells&&t.cells.length>1))throw new Error('no cells');
       const g=el('g',{'stroke-linecap':'round'});
       svg.appendChild(g);
 
@@ -1110,31 +1094,169 @@ ${cat.mods.map(m=>`
       // (gold = passenger, pink = freight). Lines sit exactly on the recorded
       // track cells -- no offset, no second line stacked on top.
       const TRACK='#22c7ff';
+      // --- schematic rail-map rendering -------------------------------------
+      // Like a printed network plan: straight lines, 45° bends, tidy symbols --
+      // and a COMPRESSED layout. The long rural spurs (the 322-block boulevard
+      // and the freight line to its terminus) would stretch the picture to a thin
+      // strip, so gaps larger than CAP blocks on either axis are cut down to CAP
+      // and the affected stretches carry a break symbol, exactly as a real plan
+      // does. Order and topology are preserved: the mapping is monotone.
+      const CAP=26, LW=3.4;
+      const CAP_RATIO=2.0;                 // true/drawn length that counts as broken
+      const midCell=cells=>cells[Math.floor(cells.length/2)];
+
+      // gather node positions (track ends + stations are the same coordinates)
+      const nodeKeys=new Map();
+      const addNode=c=>nodeKeys.set(c[0]+'|'+c[1]+'|'+c[2],c);
+      wd.tracks.forEach(t=>{
+        if(!t.cells||t.cells.length<2)return;
+        addNode(t.cells[0]); addNode(t.cells[t.cells.length-1]);
+      });
+      (wd.stations||[]).forEach(st=>addNode([st.x,st.y,st.z]));
+      function compactor(values){
+        const uniq=[...new Set(values)].sort((a,b)=>a-b), pos=new Map();
+        let acc=0;
+        uniq.forEach((v,i)=>{ if(i>0)acc+=Math.min(v-uniq[i-1],CAP); pos.set(v,acc); });
+        return {pos,span:acc,at:v=>{
+          if(pos.has(v))return pos.get(v);
+          for(let i=0;i<uniq.length-1;i++){
+            if(v<uniq[i+1]){
+              const g=uniq[i+1]-uniq[i];
+              return pos.get(uniq[i])+(g?(v-uniq[i])/g*Math.min(g,CAP):0);
+            }
+          }
+          return pos.get(uniq[uniq.length-1]);
+        }};
+      }
+      const nodes=[...nodeKeys.values()];
+      const CX=compactor(nodes.map(c=>c[0])), CZ=compactor(nodes.map(c=>c[2]));
+      const VW=1000,VH=700,pad=74;
+      const spanX=CX.span||1, spanZ=CZ.span||1;
+      const sc=Math.min((VW-pad*2)/spanX,(VH-pad*2)/spanZ);
+      const ox=pad+((VW-pad*2)-spanX*sc)/2, oz=pad+((VH-pad*2)-spanZ*sc)/2;
+      // Minecraft +z is SOUTH; screen y grows downwards -> north ends up on top.
+      const fx=x=>ox+CX.at(x)*sc, fz=z=>oz+CZ.at(z)*sc;
+
+      function octiline(a,b,hint){
+        const dx=b[0]-a[0], dy=b[1]-a[1];
+        const adx=Math.abs(dx), ady=Math.abs(dy);
+        if(adx<0.5||ady<0.5||Math.abs(adx-ady)<0.5)return [a,b];
+        const t=Math.min(adx,ady), sx=Math.sign(dx), sy=Math.sign(dy);
+        const diag=[a[0]+sx*t,a[1]+sy*t];              // 45° first, then straight
+        const axis=[b[0]-sx*t,b[1]-sy*t];              // straight first, then 45°
+        if(!hint)return [a,diag,b];
+        const d1=Math.hypot(diag[0]-hint[0],diag[1]-hint[1]);
+        const d2=Math.hypot(axis[0]-hint[0],axis[1]-hint[1]);
+        return d1<=d2?[a,diag,b]:[a,axis,b];
+      }
+
       let tracksDrawn=0;
+      const routes=[];
       wd.tracks.forEach(t=>{
         if(!t.cells||t.cells.length<2)return;
         tracksDrawn++;
+        const A=t.cells[0], M=midCell(t.cells), B=t.cells[t.cells.length-1];
+        const pts=octiline([fx(A[0]),fz(A[2])],[fx(B[0]),fz(B[2])],[fx(M[0]),fz(M[2])]);
+        const drawnPx=Math.hypot(fx(A[0])-fx(B[0]),fz(A[2])-fz(B[2]));
+        const trueBlk=Math.hypot(A[0]-B[0],A[2]-B[2]);
+        const drawnBlk=isFinite(sc)&&sc>0?drawnPx/sc:0;
+        routes.push({t,pts,A,B,ratio:drawnBlk>0.5?trueBlk/drawnBlk:1});
         g.appendChild(el('polyline',{
-          points:t.cells.map(c=>fx(c[0])+','+fz(c[2])).join(' '),
-          fill:'none',stroke:TRACK,'stroke-opacity':'0.9',
-          'stroke-width':Math.max(1.6,s*0.55),
-          'stroke-linejoin':'round','stroke-linecap':'round'}));
+          points:pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' '),
+          fill:'none',stroke:TRACK,'stroke-opacity':'0.92',
+          'stroke-width':LW,'stroke-linejoin':'round','stroke-linecap':'round'}));
       });
 
-      // stations: person=gold, cargo=pink
+      // break symbols on stretches that had to be compressed (they stand for
+      // track that is really much longer than drawn)
+      routes.forEach(({pts,ratio})=>{
+        if(ratio<CAP_RATIO)return;
+        const i=Math.floor(pts.length/2);
+        const a=pts[i-1]||pts[0], b=pts[i]||pts[pts.length-1];
+        const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2;
+        let ux=b[0]-a[0], uy=b[1]-a[1];
+        const L=Math.hypot(ux,uy)||1; ux/=L; uy/=L;
+        const nx=-uy, ny=ux;                            // perpendicular
+        for(const o of [-3.2,3.2]){
+          g.appendChild(el('line',{
+            x1:(mx+ux*o-nx*6).toFixed(1),y1:(my+uy*o-ny*6).toFixed(1),
+            x2:(mx+ux*o+nx*6).toFixed(1),y2:(my+uy*o+ny*6).toFixed(1),
+            stroke:TRACK,'stroke-width':'2.6','stroke-linecap':'round'}));
+        }
+      });
+
+      // junction marks: three or more stretches meet here
+      const deg=new Map(), npos=new Map();
+      wd.tracks.forEach(t=>{
+        if(!t.cells||t.cells.length<2)return;
+        [t.cells[0],t.cells[t.cells.length-1]].forEach(c=>{
+          const k=c[0]+'|'+c[1]+'|'+c[2];
+          deg.set(k,(deg.get(k)||0)+1); npos.set(k,c);
+        });
+      });
+      npos.forEach((c,k)=>{
+        if((deg.get(k)||0)<3)return;
+        g.appendChild(el('circle',{cx:fx(c[0]).toFixed(1),cy:fz(c[2]).toFixed(1),r:'2.8',
+          fill:'#0b0d10',stroke:TRACK,'stroke-width':'1.8'}));
+      });
+      // dead ends get a terminal bar, so a line never just stops in empty space
+      npos.forEach((c,k)=>{
+        if((deg.get(k)||0)!==1)return;
+        const x=fx(c[0]), y=fz(c[2]);
+        g.appendChild(el('line',{x1:(x-5).toFixed(1),y1:(y-5).toFixed(1),
+          x2:(x+5).toFixed(1),y2:(y+5).toFixed(1),stroke:TRACK,
+          'stroke-width':'3','stroke-linecap':'round'}));
+      });
+
+      // stations: gold circle = passenger, pink diamond = freight. Labels follow
+      // ONE rule (right of the symbol, level with it) and only move if that spot
+      // is taken -- so the map reads consistently.
+      const placed=[];
+      const fits=(x,y,w,h)=>{
+        if(x<8||y<8||x+w>VW-8||y+h>VH-8)return false;
+        return !placed.some(b=>x<b.x+b.w&&x+w>b.x&&y<b.y+b.h&&y+h>b.y);
+      };
       (wd.stations||[]).forEach(st=>{
-        const cargo=st.type==='cargo';
-        const cx=fx(st.x),cy=fz(st.z);
-        g.appendChild(el('circle',{
-          cx:cx,cy:cy,r:Math.max(5,s*1.6),fill:cargo?'#ff5c8a':'#ffd54a',
-          stroke:'#000','stroke-opacity':'0.55','stroke-width':1}));
-        const lbl=el('text',{
-          x:cx+8,y:cy-8,fill:'#eee','font-size':'11',
-          'font-family':'inherit',style:'paint-order:stroke;'+
-            'stroke:#000;stroke-width:3px;'});
-        lbl.textContent=st.name||'?';
+        const cargo=st.type==='cargo', cx=fx(st.x), cy=fz(st.z);
+        const col=cargo?'#ff5c8a':'#ffd54a';
+        if(cargo){
+          g.appendChild(el('rect',{x:(cx-5.2).toFixed(1),y:(cy-5.2).toFixed(1),
+            width:'10.4',height:'10.4',rx:'1.5',
+            transform:`rotate(45 ${cx.toFixed(1)} ${cy.toFixed(1)})`,
+            fill:'#0b0d10',stroke:col,'stroke-width':'2.4'}));
+        }else{
+          g.appendChild(el('circle',{cx:cx.toFixed(1),cy:cy.toFixed(1),r:'5.6',
+            fill:'#0b0d10',stroke:col,'stroke-width':'2.4'}));
+        }
+        const txt=st.name||'?';
+        const w=txt.length*6.6+8, h=16;
+        const cands=[[cx+11,cy-8],[cx+11,cy+10],[cx-11-w,cy-8],[cx-11-w,cy+10]];
+        for(let extra=1;extra<=3;extra++){                 // nudge downwards
+          cands.push([cx+11,cy-8+extra*17]);
+        }
+        let px=null,py=null;
+        for(const [x,y] of cands){
+          if(fits(x,y,w,h)){px=x;py=y;placed.push({x,y,w,h});break;}
+        }
+        if(px===null){px=cx+11;py=cy-8;}
+        const lbl=el('text',{x:px.toFixed(1),y:(py+12).toFixed(1),
+          fill:'#e8ecf1','font-size':'12.5','font-family':'inherit',
+          style:'paint-order:stroke;stroke:#0b0d10;stroke-width:3px;'+
+                'stroke-linejoin:round'});
+        lbl.textContent=txt;
         g.appendChild(lbl);
       });
+
+      // compass: the plan is north-up like the live map
+      const cxp=VW-pad+22, cyp=pad-30;
+      g.appendChild(el('line',{x1:cxp,y1:(cyp+24).toFixed(1),x2:cxp,y2:cyp.toFixed(1),
+        stroke:'#8b949e','stroke-width':'2'}));
+      g.appendChild(el('path',{d:`M ${cxp-5} ${cyp+9} L ${cxp} ${cyp} L ${cxp+5} ${cyp+9}`,
+        fill:'none',stroke:'#8b949e','stroke-width':'2','stroke-linejoin':'round'}));
+      const nlab=el('text',{x:cxp,y:(cyp-7).toFixed(1),fill:'#8b949e','font-size':'13',
+        'text-anchor':'middle','font-family':'inherit'});
+      nlab.textContent='N';
+      g.appendChild(nlab);
       const lg=document.getElementById('railLegend');
       if(lg){
         const stations=wd.stations||[];
@@ -1150,8 +1272,9 @@ ${cat.mods.map(m=>`
         lg.hidden=false;
       }
       meta.textContent=
-        `// ${wd.stations?wd.stations.length:0} stationen · `+
+        `// ${wd.stations?wd.stations.length:0} bahnhöfe · `+
         `${wd.tracks.reduce((a,t)=>a+t.len,0)} schienenblöcke · `+
+        `schematischer netzplan (kurven begradigt) · `+
         `stand ${new Date(d.generatedUtc*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`;
     }catch(_){
       svg.innerHTML='';
