@@ -1114,10 +1114,14 @@ ${cat.mods.map(m=>`
       const counts={person:0,cargo:0,mixed:0,none:0};
       function shiftPts(cells,off){
         const P=cells.map(c=>[fx(c[0]),fz(c[2])]);
+        const last=P.length-1;
         return P.map((p,i)=>{
-          const a=P[Math.max(0,i-1)],b=P[Math.min(P.length-1,i+1)];
+          const a=P[Math.max(0,i-1)],b=P[Math.min(last,i+1)];
           const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1;
-          return (p[0]+(-dy/L)*off)+','+(p[1]+(dx/L)*off);
+          // taper to zero at both ends: the twin lines of a shared stretch
+          // converge on the junction instead of ending beside it
+          const fade=Math.min(1,i/2,(last-i)/2);
+          return (p[0]+(-dy/L)*off*fade)+','+(p[1]+(dx/L)*off*fade);
         }).join(' ');
       }
       function stroke(pts,colour,cls){
