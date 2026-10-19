@@ -705,12 +705,9 @@ footer .tagline em{color:var(--accent);font-style:normal;}
     </div>
     <p class="rail-meta" id="railMeta">// netz wird geladen …</p>
     <div class="rail-legend" id="railLegend" hidden>
-      <span><i style="background:#22c7ff"></i>personenverkehr <b id="lgPerson">0</b></span>
-      <span><i style="background:#ff8c2a"></i>warenverkehr <b id="lgCargo">0</b></span>
-      <span><span style="display:inline-flex;flex-direction:column;gap:2px"><i style="background:#22c7ff;height:2px"></i><i style="background:#ff8c2a;height:2px"></i></span>gemeinsame strecke <b id="lgMixed">0</b></span>
-      <span><i style="background:#78838f"></i>ohne durchgangsverkehr <b id="lgNone">0</b></span>
-      <span><i class="dot" style="background:#ffd54a"></i>personenbahnhof</span>
-      <span><i class="dot" style="background:#ff5c8a"></i>güterbahnhof</span>
+      <span><i style="background:#22c7ff"></i>gleisnetz <b id="lgTrack">0</b></span>
+      <span><i class="dot" style="background:#ffd54a"></i>bahnhof personen <b id="lgPers">0</b></span>
+      <span><i class="dot" style="background:#ff5c8a"></i>bahnhof güter <b id="lgGut">0</b></span>
     </div>
     <p class="map-links">
       <a href="https://map.max-kuehn.com/" target="_blank" rel="noopener">Dieses Netz live auf der Weltkarte ↗</a>
@@ -1106,32 +1103,21 @@ ${cat.mods.map(m=>`
       const g=el('g',{'stroke-linecap':'round'});
       svg.appendChild(g);
 
-      // tracks: one polyline per edge, coloured by the traffic that routes over it.
-      // Shared stretches are drawn as TWO parallel lines (passenger on one side,
-      // cargo on the other) exactly like a double-track line.
-      const STROKE={person:'#22c7ff',cargo:'#ff8c2a',none:'#78838f'};
-      const counts={person:0,cargo:0,mixed:0,none:0};
-      function stroke(pts,colour,cls,width){
-        g.appendChild(el('polyline',{
-          points:pts,fill:'none',stroke:colour,
-          'stroke-opacity':cls==='none'?'0.5':'0.9',
-          'stroke-width':width||Math.max(1.6,s*0.55),
-          'stroke-linejoin':'round','stroke-linecap':'round'}));
-      }
-      // Every line runs exactly on the rails (no sideways offset: parallel lines
-      // broke the junctions). On a shared stretch the freight line is the wider
-      // underlay and the passenger line lies on top of it.
+      // ONE colour for the whole network: rails are rails. Most track carries
+      // both passenger and freight traffic, and colouring it either way always
+      // hid the other service. What a place serves is told by the station dots
+      // (gold = passenger, pink = freight). Lines sit exactly on the recorded
+      // track cells -- no offset, no second line stacked on top.
+      const TRACK='#22c7ff';
+      let tracksDrawn=0;
       wd.tracks.forEach(t=>{
         if(!t.cells||t.cells.length<2)return;
-        const cls=STROKE[t.traffic]?t.traffic:(t.traffic==='mixed'?'mixed':'none');
-        counts[cls]++;
-        const pts=t.cells.map(c=>fx(c[0])+','+fz(c[2])).join(' ');
-        if(cls==='mixed'){
-          stroke(pts,STROKE.cargo,'cargo',Math.max(2.6,s*1.0));
-          stroke(pts,STROKE.person,'person');
-        }else{
-          stroke(pts,STROKE[cls],cls);
-        }
+        tracksDrawn++;
+        g.appendChild(el('polyline',{
+          points:t.cells.map(c=>fx(c[0])+','+fz(c[2])).join(' '),
+          fill:'none',stroke:TRACK,'stroke-opacity':'0.9',
+          'stroke-width':Math.max(1.6,s*0.55),
+          'stroke-linejoin':'round','stroke-linecap':'round'}));
       });
 
       // stations: person=gold, cargo=pink
@@ -1150,16 +1136,15 @@ ${cat.mods.map(m=>`
       });
       const lg=document.getElementById('railLegend');
       if(lg){
-        // Legend counts the LINES DRAWN (shared stretches count for both sides),
-        // so it matches the BlueMap marker sets one-to-one.
-        const drawn={lgPerson:counts.person+counts.mixed,
-                     lgCargo:counts.cargo+counts.mixed,
-                     lgMixed:counts.mixed,
-                     lgNone:counts.none};
-        for(const id in drawn){
+        const stations=wd.stations||[];
+        const shown={lgTrack:tracksDrawn,
+                     lgPers:stations.filter(st=>st.type!=='cargo').length,
+                     lgGut:stations.filter(st=>st.type==='cargo').length};
+        for(const id in shown){
           const b=document.getElementById(id);
-          b.textContent=drawn[id];
-          b.parentElement.style.display=drawn[id]?'':'none';
+          if(!b)continue;
+          b.textContent=shown[id];
+          b.parentElement.style.display=shown[id]?'':'none';
         }
         lg.hidden=false;
       }
