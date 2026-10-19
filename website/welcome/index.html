@@ -1110,36 +1110,27 @@ ${cat.mods.map(m=>`
       // Shared stretches are drawn as TWO parallel lines (passenger on one side,
       // cargo on the other) exactly like a double-track line.
       const STROKE={person:'#22c7ff',cargo:'#ff8c2a',none:'#78838f'};
-      const OFF=Math.max(1.7,s*0.6);
       const counts={person:0,cargo:0,mixed:0,none:0};
-      function shiftPts(cells,off){
-        const P=cells.map(c=>[fx(c[0]),fz(c[2])]);
-        const last=P.length-1;
-        return P.map((p,i)=>{
-          const a=P[Math.max(0,i-1)],b=P[Math.min(last,i+1)];
-          const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1;
-          // taper to zero at both ends: the twin lines of a shared stretch
-          // converge on the junction instead of ending beside it
-          const fade=Math.min(1,i/2,(last-i)/2);
-          return (p[0]+(-dy/L)*off*fade)+','+(p[1]+(dx/L)*off*fade);
-        }).join(' ');
-      }
-      function stroke(pts,colour,cls){
+      function stroke(pts,colour,cls,width){
         g.appendChild(el('polyline',{
           points:pts,fill:'none',stroke:colour,
-          'stroke-opacity':cls==='none'?'0.5':'0.85',
-          'stroke-width':Math.max(1.6,s*0.55),
-          'stroke-linejoin':'round'}));
+          'stroke-opacity':cls==='none'?'0.5':'0.9',
+          'stroke-width':width||Math.max(1.6,s*0.55),
+          'stroke-linejoin':'round','stroke-linecap':'round'}));
       }
+      // Every line runs exactly on the rails (no sideways offset: parallel lines
+      // broke the junctions). On a shared stretch the freight line is the wider
+      // underlay and the passenger line lies on top of it.
       wd.tracks.forEach(t=>{
         if(!t.cells||t.cells.length<2)return;
         const cls=STROKE[t.traffic]?t.traffic:(t.traffic==='mixed'?'mixed':'none');
         counts[cls]++;
+        const pts=t.cells.map(c=>fx(c[0])+','+fz(c[2])).join(' ');
         if(cls==='mixed'){
-          stroke(shiftPts(t.cells,OFF),STROKE.person,'person');
-          stroke(shiftPts(t.cells,-OFF),STROKE.cargo,'cargo');
+          stroke(pts,STROKE.cargo,'cargo',Math.max(2.6,s*1.0));
+          stroke(pts,STROKE.person,'person');
         }else{
-          stroke(t.cells.map(c=>fx(c[0])+','+fz(c[2])).join(' '),STROKE[cls],cls);
+          stroke(pts,STROKE[cls],cls);
         }
       });
 
