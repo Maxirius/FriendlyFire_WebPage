@@ -450,50 +450,32 @@ section.phase-strip{
 .ptile .pname{font-weight:700;font-size:15px;}
 .ptile .pmeta{font-family:var(--font-mono);font-size:11px;color:var(--muted);
   margin-top:2px;}
-
-/* ---------- Rail network ---------- */
-.railnet-section{
-  border-top:1px solid var(--border);
-  padding:64px 0 40px;
-}
-.rail-frame{
-  border:1px solid var(--border);
-  background:var(--panel-2);
-  padding:10px;
-}
-.rail-frame svg{display:block;width:100%;height:auto;}
-.rail-meta{
-  margin-top:12px;
-  font-family:var(--font-mono);
-  font-size:12px;color:var(--muted);
-}
-.rail-legend{
-  display:flex;flex-wrap:wrap;gap:8px 18px;
-  margin-top:14px;
-  font-family:var(--font-mono);
-  font-size:12px;color:var(--muted);
-}
-.rail-legend span{display:inline-flex;align-items:center;gap:7px;}
-.rail-legend i{display:inline-block;width:15px;height:3px;border-radius:2px;}
-.rail-legend i.dot{width:9px;height:9px;border-radius:50%;}
-.rail-legend b{color:var(--fg);font-weight:600;}
-
 /* ---------- World map ---------- */
 .map-section{
   border-top:1px solid var(--border);
   padding:64px 0 80px;
 }
-.map-frame{
-  position:relative;
-  aspect-ratio:16/9;
-  border:1px solid var(--border);
-  background:var(--panel-2);
-  overflow:hidden;
+/* World map teaser -- the map itself lives on its own page (/map),
+   because the waypoint tools need their own canvas and screen estate. */
+.map-cta{
+  display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+  border:1px solid var(--border);background:var(--panel-2);
 }
-.map-frame iframe{
-  position:absolute;inset:0;width:100%;height:100%;
-  border:0;background:#0b0e12;
+@media(max-width:760px){.map-cta{grid-template-columns:1fr;}}
+.map-cta-art{
+  display:block;width:100%;height:100%;min-height:200px;
+  border-right:1px solid var(--border);
 }
+@media(max-width:760px){
+  .map-cta-art{border-right:0;border-bottom:1px solid var(--border);}
+}
+.map-cta-body{
+  padding:28px 32px;display:flex;flex-direction:column;gap:12px;
+  align-items:flex-start;
+}
+.map-cta-body h3{font-size:18px;font-weight:700;}
+.map-cta-body p{font-size:14px;color:var(--muted);text-wrap:pretty;}
+.map-cta-body .cta{margin-top:6px;font-size:14px;padding:11px 18px;}
 .map-links{
   margin-top:14px;
   font-family:var(--font-mono);font-size:12px;
@@ -541,8 +523,7 @@ footer .tagline em{color:var(--accent);font-style:normal;}
       <a href="#serverstatus">Status</a>
       <a href="#mods">Mods</a>
       <a href="#statistiken-live">Statistiken</a>
-      <a href="#schienennetz">Netz</a>
-      <a href="#weltkarte">Weltkarte</a>
+      <a href="/map">Weltkarte</a>
       <a class="hide-mobile" href="/dashboard.html" id="navDash" style="display:none">Mein Konto</a>
       <a href="/login" id="navLogin">Login</a>
       <a class="btn-discord hide-mobile" href="#">Discord</a><!-- invite link follows -->
@@ -692,40 +673,41 @@ footer .tagline em{color:var(--accent);font-style:normal;}
       <a href="/stats" style="color:var(--accent);text-decoration:none">→ Vollständige Statistiken öffnen (alle Kategorien, Charts, Profile)</a>
     </p>
   </section>
-
-  <!-- RAIL NETWORK -->
-  <section class="railnet-section" id="schienennetz">
-    <div class="section-head">
-      <h2>Schienennetz</h2>
-      <span>jede schiene kartiert — automatisch aus dem spiel</span>
-    </div>
-    <div class="rail-frame">
-      <svg id="railSvg" viewBox="0 0 1000 700" role="img"
-           aria-label="Topografische Übersicht des Schienennetzes"></svg>
-    </div>
-    <p class="rail-meta" id="railMeta">// netz wird geladen …</p>
-    <div class="rail-legend" id="railLegend" hidden>
-      <span><i style="background:#22c7ff"></i>gleisnetz <b id="lgTrack">0</b></span>
-      <span><i class="dot" style="background:#ffd54a"></i>bahnhof personen <b id="lgPers">0</b></span>
-      <span><i class="dot" style="background:#ff5c8a"></i>bahnhof güter <b id="lgGut">0</b></span>
-    </div>
-    <p class="map-links">
-      <a href="https://map.max-kuehn.com/" target="_blank" rel="noopener">Dieses Netz live auf der Weltkarte ↗</a>
-    </p>
-  </section>
-
   <!-- WORLD MAP -->
   <section class="map-section" id="weltkarte">
     <div class="section-head">
       <h2>Weltkarte</h2>
-      <span>live erkunden — unsere Welt in Echtzeit</span>
+      <span>live erkunden — mit waypoints für die ganze community</span>
     </div>
-    <div class="map-frame" id="mapFrame">
-      <iframe id="mapEmbed" title="Interactive world map (BlueMap)" loading="lazy"
-              src="https://map.max-kuehn.com/" allowfullscreen></iframe>
+    <div class="map-cta">
+      <svg class="map-cta-art" viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice"
+           role="img" aria-label="Abstrakte Weltkarten-Skizze mit Wegpunkt">
+        <defs>
+          <pattern id="ctaGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M20 0H0V20" fill="none" stroke="#26303a" stroke-width="1"/>
+          </pattern>
+        </defs>
+        <rect width="320" height="180" fill="#0b0e12"/>
+        <rect width="320" height="180" fill="url(#ctaGrid)"/>
+        <path d="M0 132 L58 100 L118 122 L186 76 L250 98 L320 64 L320 180 L0 180 Z"
+              fill="#131920" stroke="#22c7ff" stroke-width="1.5" opacity="0.9"/>
+        <path d="M0 148 L70 132 L140 144 L212 120 L320 138"
+              fill="none" stroke="#ffc35c" stroke-width="1" stroke-dasharray="4 3"
+              opacity="0.7"/>
+        <path d="M164 40c-7.2 0-13 5.8-13 13 0 9.7 13 25 13 25s13-15.3 13-25c0-7.2-5.8-13-13-13z"
+              fill="#77cf52" stroke="#101418" stroke-width="1.5"/>
+        <circle cx="164" cy="53" r="4.4" fill="#101418"/>
+      </svg>
+      <div class="map-cta-body">
+        <h3>Deine Welt, live auf der Karte</h3>
+        <p>BlueMap rendert unsere Welt in Echtzeit — Bauwerke, Höhlen und das
+          komplette Schienennetz. Neu: Setz eigene <b>Waypoints</b> direkt auf
+          der Karte — für alle sichtbar, vom Basislager bis zur Schatzhöhle.</p>
+        <a class="cta primary" href="/map">Zur Weltkarte →</a>
+      </div>
     </div>
     <p class="map-links">
-      <a href="https://map.max-kuehn.com/" target="_blank" rel="noopener">Karte im Vollbild öffnen ↗</a>
+      <a href="https://map.max-kuehn.com/" target="_blank" rel="noopener">Karte direkt öffnen (ohne Waypoint-Werkzeuge) ↗</a>
     </p>
   </section>
 
@@ -1068,218 +1050,6 @@ ${cat.mods.map(m=>`
       }
     }
     loadStats();
-  })();
-
-  // ----- rail network overview (fed by /network.json, generated on the host) -----
-  (async()=>{
-    const svg=document.getElementById('railSvg'),
-          meta=document.getElementById('railMeta');
-    const NS='http://www.w3.org/2000/svg';
-    function el(tag,attrs){
-      const e=document.createElementNS(NS,tag);
-      for(const k in attrs)e.setAttribute(k,attrs[k]);
-      return e;
-    }
-    try{
-      const d=await (await fetch('/network.json',{cache:'no-store'})).json();
-      const wd=d.dims&&(d.dims.world||Object.values(d.dims)[0]);
-      if(!wd)throw new Error('empty feed');
-      if(!(wd.tracks||[]).some(t=>t.cells&&t.cells.length>1))throw new Error('no cells');
-      const g=el('g',{'stroke-linecap':'round'});
-      svg.appendChild(g);
-
-      // ONE colour for the whole network: rails are rails. Most track carries
-      // both passenger and freight traffic, and colouring it either way always
-      // hid the other service. What a place serves is told by the station dots
-      // (gold = passenger, pink = freight). Lines sit exactly on the recorded
-      // track cells -- no offset, no second line stacked on top.
-      const TRACK='#22c7ff';
-      // --- schematic rail-map rendering -------------------------------------
-      // Like a printed network plan: straight lines, 45° bends, tidy symbols --
-      // and a COMPRESSED layout. The long rural spurs (the 322-block boulevard
-      // and the freight line to its terminus) would stretch the picture to a thin
-      // strip, so gaps larger than CAP blocks on either axis are cut down to CAP
-      // and the affected stretches carry a break symbol, exactly as a real plan
-      // does. Order and topology are preserved: the mapping is monotone.
-      const CAP=26, LW=3.4;
-      const CAP_RATIO=2.0;                 // true/drawn length that counts as broken
-      const midCell=cells=>cells[Math.floor(cells.length/2)];
-
-      // gather node positions (track ends + stations are the same coordinates)
-      const nodeKeys=new Map();
-      const addNode=c=>nodeKeys.set(c[0]+'|'+c[1]+'|'+c[2],c);
-      wd.tracks.forEach(t=>{
-        if(!t.cells||t.cells.length<2)return;
-        addNode(t.cells[0]); addNode(t.cells[t.cells.length-1]);
-      });
-      (wd.stations||[]).forEach(st=>addNode([st.x,st.y,st.z]));
-      function compactor(values){
-        const uniq=[...new Set(values)].sort((a,b)=>a-b), pos=new Map();
-        let acc=0;
-        uniq.forEach((v,i)=>{ if(i>0)acc+=Math.min(v-uniq[i-1],CAP); pos.set(v,acc); });
-        return {pos,span:acc,at:v=>{
-          if(pos.has(v))return pos.get(v);
-          for(let i=0;i<uniq.length-1;i++){
-            if(v<uniq[i+1]){
-              const g=uniq[i+1]-uniq[i];
-              return pos.get(uniq[i])+(g?(v-uniq[i])/g*Math.min(g,CAP):0);
-            }
-          }
-          return pos.get(uniq[uniq.length-1]);
-        }};
-      }
-      const nodes=[...nodeKeys.values()];
-      const CX=compactor(nodes.map(c=>c[0])), CZ=compactor(nodes.map(c=>c[2]));
-      const VW=1000,VH=700,pad=74;
-      const spanX=CX.span||1, spanZ=CZ.span||1;
-      const sc=Math.min((VW-pad*2)/spanX,(VH-pad*2)/spanZ);
-      const ox=pad+((VW-pad*2)-spanX*sc)/2, oz=pad+((VH-pad*2)-spanZ*sc)/2;
-      // Minecraft +z is SOUTH; screen y grows downwards -> north ends up on top.
-      const fx=x=>ox+CX.at(x)*sc, fz=z=>oz+CZ.at(z)*sc;
-
-      function octiline(a,b,hint){
-        const dx=b[0]-a[0], dy=b[1]-a[1];
-        const adx=Math.abs(dx), ady=Math.abs(dy);
-        if(adx<0.5||ady<0.5||Math.abs(adx-ady)<0.5)return [a,b];
-        const t=Math.min(adx,ady), sx=Math.sign(dx), sy=Math.sign(dy);
-        const diag=[a[0]+sx*t,a[1]+sy*t];              // 45° first, then straight
-        const axis=[b[0]-sx*t,b[1]-sy*t];              // straight first, then 45°
-        if(!hint)return [a,diag,b];
-        const d1=Math.hypot(diag[0]-hint[0],diag[1]-hint[1]);
-        const d2=Math.hypot(axis[0]-hint[0],axis[1]-hint[1]);
-        return d1<=d2?[a,diag,b]:[a,axis,b];
-      }
-
-      let tracksDrawn=0;
-      const routes=[];
-      wd.tracks.forEach(t=>{
-        if(!t.cells||t.cells.length<2)return;
-        tracksDrawn++;
-        const A=t.cells[0], M=midCell(t.cells), B=t.cells[t.cells.length-1];
-        const pts=octiline([fx(A[0]),fz(A[2])],[fx(B[0]),fz(B[2])],[fx(M[0]),fz(M[2])]);
-        const drawnPx=Math.hypot(fx(A[0])-fx(B[0]),fz(A[2])-fz(B[2]));
-        const trueBlk=Math.hypot(A[0]-B[0],A[2]-B[2]);
-        const drawnBlk=isFinite(sc)&&sc>0?drawnPx/sc:0;
-        routes.push({t,pts,A,B,ratio:drawnBlk>0.5?trueBlk/drawnBlk:1});
-        g.appendChild(el('polyline',{
-          points:pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' '),
-          fill:'none',stroke:TRACK,'stroke-opacity':'0.92',
-          'stroke-width':LW,'stroke-linejoin':'round','stroke-linecap':'round'}));
-      });
-
-      // break symbols on stretches that had to be compressed (they stand for
-      // track that is really much longer than drawn)
-      routes.forEach(({pts,ratio})=>{
-        if(ratio<CAP_RATIO)return;
-        const i=Math.floor(pts.length/2);
-        const a=pts[i-1]||pts[0], b=pts[i]||pts[pts.length-1];
-        const mx=(a[0]+b[0])/2, my=(a[1]+b[1])/2;
-        let ux=b[0]-a[0], uy=b[1]-a[1];
-        const L=Math.hypot(ux,uy)||1; ux/=L; uy/=L;
-        const nx=-uy, ny=ux;                            // perpendicular
-        for(const o of [-3.2,3.2]){
-          g.appendChild(el('line',{
-            x1:(mx+ux*o-nx*6).toFixed(1),y1:(my+uy*o-ny*6).toFixed(1),
-            x2:(mx+ux*o+nx*6).toFixed(1),y2:(my+uy*o+ny*6).toFixed(1),
-            stroke:TRACK,'stroke-width':'2.6','stroke-linecap':'round'}));
-        }
-      });
-
-      // junction marks: three or more stretches meet here
-      const deg=new Map(), npos=new Map();
-      wd.tracks.forEach(t=>{
-        if(!t.cells||t.cells.length<2)return;
-        [t.cells[0],t.cells[t.cells.length-1]].forEach(c=>{
-          const k=c[0]+'|'+c[1]+'|'+c[2];
-          deg.set(k,(deg.get(k)||0)+1); npos.set(k,c);
-        });
-      });
-      npos.forEach((c,k)=>{
-        if((deg.get(k)||0)<3)return;
-        g.appendChild(el('circle',{cx:fx(c[0]).toFixed(1),cy:fz(c[2]).toFixed(1),r:'2.8',
-          fill:'#0b0d10',stroke:TRACK,'stroke-width':'1.8'}));
-      });
-      // dead ends get a terminal bar, so a line never just stops in empty space
-      npos.forEach((c,k)=>{
-        if((deg.get(k)||0)!==1)return;
-        const x=fx(c[0]), y=fz(c[2]);
-        g.appendChild(el('line',{x1:(x-5).toFixed(1),y1:(y-5).toFixed(1),
-          x2:(x+5).toFixed(1),y2:(y+5).toFixed(1),stroke:TRACK,
-          'stroke-width':'3','stroke-linecap':'round'}));
-      });
-
-      // stations: gold circle = passenger, pink diamond = freight. Labels follow
-      // ONE rule (right of the symbol, level with it) and only move if that spot
-      // is taken -- so the map reads consistently.
-      const placed=[];
-      const fits=(x,y,w,h)=>{
-        if(x<8||y<8||x+w>VW-8||y+h>VH-8)return false;
-        return !placed.some(b=>x<b.x+b.w&&x+w>b.x&&y<b.y+b.h&&y+h>b.y);
-      };
-      (wd.stations||[]).forEach(st=>{
-        const cargo=st.type==='cargo', cx=fx(st.x), cy=fz(st.z);
-        const col=cargo?'#ff5c8a':'#ffd54a';
-        if(cargo){
-          g.appendChild(el('rect',{x:(cx-5.2).toFixed(1),y:(cy-5.2).toFixed(1),
-            width:'10.4',height:'10.4',rx:'1.5',
-            transform:`rotate(45 ${cx.toFixed(1)} ${cy.toFixed(1)})`,
-            fill:'#0b0d10',stroke:col,'stroke-width':'2.4'}));
-        }else{
-          g.appendChild(el('circle',{cx:cx.toFixed(1),cy:cy.toFixed(1),r:'5.6',
-            fill:'#0b0d10',stroke:col,'stroke-width':'2.4'}));
-        }
-        const txt=st.name||'?';
-        const w=txt.length*6.6+8, h=16;
-        const cands=[[cx+11,cy-8],[cx+11,cy+10],[cx-11-w,cy-8],[cx-11-w,cy+10]];
-        for(let extra=1;extra<=3;extra++){                 // nudge downwards
-          cands.push([cx+11,cy-8+extra*17]);
-        }
-        let px=null,py=null;
-        for(const [x,y] of cands){
-          if(fits(x,y,w,h)){px=x;py=y;placed.push({x,y,w,h});break;}
-        }
-        if(px===null){px=cx+11;py=cy-8;}
-        const lbl=el('text',{x:px.toFixed(1),y:(py+12).toFixed(1),
-          fill:'#e8ecf1','font-size':'12.5','font-family':'inherit',
-          style:'paint-order:stroke;stroke:#0b0d10;stroke-width:3px;'+
-                'stroke-linejoin:round'});
-        lbl.textContent=txt;
-        g.appendChild(lbl);
-      });
-
-      // compass: the plan is north-up like the live map
-      const cxp=VW-pad+22, cyp=pad-30;
-      g.appendChild(el('line',{x1:cxp,y1:(cyp+24).toFixed(1),x2:cxp,y2:cyp.toFixed(1),
-        stroke:'#8b949e','stroke-width':'2'}));
-      g.appendChild(el('path',{d:`M ${cxp-5} ${cyp+9} L ${cxp} ${cyp} L ${cxp+5} ${cyp+9}`,
-        fill:'none',stroke:'#8b949e','stroke-width':'2','stroke-linejoin':'round'}));
-      const nlab=el('text',{x:cxp,y:(cyp-7).toFixed(1),fill:'#8b949e','font-size':'13',
-        'text-anchor':'middle','font-family':'inherit'});
-      nlab.textContent='N';
-      g.appendChild(nlab);
-      const lg=document.getElementById('railLegend');
-      if(lg){
-        const stations=wd.stations||[];
-        const shown={lgTrack:tracksDrawn,
-                     lgPers:stations.filter(st=>st.type!=='cargo').length,
-                     lgGut:stations.filter(st=>st.type==='cargo').length};
-        for(const id in shown){
-          const b=document.getElementById(id);
-          if(!b)continue;
-          b.textContent=shown[id];
-          b.parentElement.style.display=shown[id]?'':'none';
-        }
-        lg.hidden=false;
-      }
-      meta.textContent=
-        `// ${wd.stations?wd.stations.length:0} bahnhöfe · `+
-        `${wd.tracks.reduce((a,t)=>a+t.len,0)} schienenblöcke · `+
-        `schematischer netzplan (kurven begradigt) · `+
-        `stand ${new Date(d.generatedUtc*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`;
-    }catch(_){
-      svg.innerHTML='';
-      meta.textContent='// netzdaten momentan nicht verfügbar';
-    }
   })();
 
   refresh();
